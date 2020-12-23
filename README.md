@@ -6,7 +6,9 @@ This project use Django framework(port:8000) connect with MySQL database(port:33
 ## Administrator
 In order to create super user of Django, run this command:
 
-``` python manage.py createsuperuser ```
+```
+python manage.py createsuperuser
+```
 
 Then put your username, email, and password respectively. You can access the admin at ```localhost:8000/admin``` after runthe project.
 
@@ -20,4 +22,6 @@ python manage.py runserver
 ```
 
 ## Using shell
-``` python manage.py shell ```
+```
+python manage.py shell
+```
