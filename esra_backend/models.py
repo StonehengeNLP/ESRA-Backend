@@ -1,5 +1,4 @@
 from django.db import models
-import uuid
 
 # Create your models here.
 
@@ -18,22 +17,16 @@ class Author(models.Model):
     
 
 class WriteEntity(models.Model):
-    class Meta:
-        unique_together = (('paper', 'author'),)
-
-    paper = models.ForeignKey(Paper,on_delete=models.CASCADE,primary_key=True)
+    write_id = models.AutoField(primary_key=True,null=False)
+    paper = models.ForeignKey(Paper,on_delete=models.CASCADE)
     author = models.ForeignKey(Author,on_delete=models.CASCADE)
 
 class Affiliation(models.Model):
-    class Meta:
-        unique_together = (('author', 'affiliation_name'),)
-
-    author = models.ForeignKey(Author,on_delete=models.CASCADE,primary_key=True)
+    affiliation_id = models.AutoField(primary_key=True,null=False)
+    author = models.ForeignKey(Author,on_delete=models.CASCADE)
     affiliation_name = models.CharField(max_length=256,null=False)
 
 class Citation(models.Model):
-    class Meta:
-        unique_together = (('cite_paper', 'cited_paper_id'),)
-
-    cite_paper = models.ForeignKey(Paper,on_delete=models.CASCADE,primary_key=True)
+    citation_id = models.AutoField(primary_key=True,null=False)
+    cite_paper = models.ForeignKey(Paper,on_delete=models.CASCADE)
     cited_paper_id = models.IntegerField(null=False)

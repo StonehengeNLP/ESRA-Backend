@@ -107,6 +107,9 @@ media/
 *.db
 *.pid
 
+#my db file
+test
+
 # Ignore Django Migrations in Development if you are working on team
 
 # Only for Development only
