@@ -10,6 +10,7 @@ class Paper(models.Model):
     mag_id = models.CharField(max_length=12,null=False)
     citation_count = models.IntegerField(null=False)
     publish_date = models.DateField(null=False)
+    abstract = models.TextField(null=True)
 
 class Author(models.Model):
     author_id = models.AutoField(primary_key=True,null=False)
