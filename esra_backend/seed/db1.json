@@ -1,0 +1,128 @@
+[
+    {
+        "model": "esra_backend.paper",
+        "pk": 1,
+        "fields": {
+            "paper_title": "DoubleBERT: pretrained BERT for Dharma understanding",
+            "conference": "GoF Con 2021",
+            "arxiv_id": "69",
+            "mag_id": "420",
+            "citation_count": 69420,
+            "publish_date": "2020-12-01",
+            "abstract": "I have 2 BERT, Double BERT!!!!!!!!!!"
+        }
+    },
+    {
+        "model": "esra_backend.paper",
+        "pk": 2,
+        "fields": {
+            "paper_title": "WiN: Womanizer in Nowadays",
+            "conference": "ESRA Con 2021",
+            "arxiv_id": "123",
+            "mag_id": "321",
+            "citation_count": 123,
+            "publish_date": "2020-12-09",
+            "abstract": "WiN is a general term for calling womanizer in nowadays society. We, researchers at ESRA, proudly present the word 'WiN' for the researching community."
+        }
+    },
+    {
+        "model": "esra_backend.author",
+        "pk": 1,
+        "fields": {
+            "author_name": "Red Sensei"
+        }
+    },
+    {
+        "model": "esra_backend.author",
+        "pk": 2,
+        "fields": {
+            "author_name": "H. Sasada"
+        }
+    },
+    {
+        "model": "esra_backend.author",
+        "pk": 3,
+        "fields": {
+            "author_name": "Pinn So Handsome"
+        }
+    },
+    {
+        "model": "esra_backend.author",
+        "pk": 4,
+        "fields": {
+            "author_name": "Tong So Cool"
+        }
+    },
+    {
+        "model": "esra_backend.writeentity",
+        "pk": 1,
+        "fields": {
+            "paper": 1,
+            "author": 1
+        }
+    },
+    {
+        "model": "esra_backend.writeentity",
+        "pk": 2,
+        "fields": {
+            "paper": 1,
+            "author": 2
+        }
+    },
+    {
+        "model": "esra_backend.writeentity",
+        "pk": 3,
+        "fields": {
+            "paper": 2,
+            "author": 3
+        }
+    },
+    {
+        "model": "esra_backend.writeentity",
+        "pk": 4,
+        "fields": {
+            "paper": 2,
+            "author": 4
+        }
+    },
+    {
+        "model": "esra_backend.affiliation",
+        "pk": 1,
+        "fields": {
+            "author": 1,
+            "affiliation_name": "Gang of Four"
+        }
+    },
+    {
+        "model": "esra_backend.affiliation",
+        "pk": 2,
+        "fields": {
+            "author": 2,
+            "affiliation_name": "Gang of Four"
+        }
+    },
+    {
+        "model": "esra_backend.affiliation",
+        "pk": 3,
+        "fields": {
+            "author": 3,
+            "affiliation_name": "ESRA"
+        }
+    },
+    {
+        "model": "esra_backend.affiliation",
+        "pk": 4,
+        "fields": {
+            "author": 4,
+            "affiliation_name": "ESRA"
+        }
+    },
+    {
+        "model": "esra_backend.citation",
+        "pk": 1,
+        "fields": {
+            "cite_paper": 2,
+            "cited_paper_id": 1
+        }
+    }
+]
