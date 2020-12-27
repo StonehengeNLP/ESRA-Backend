@@ -11,23 +11,20 @@ class Paper(models.Model):
     citation_count = models.IntegerField(null=False)
     publish_date = models.DateField(null=False)
     abstract = models.TextField(null=True)
+    cite_to = models.ManyToManyField('self', symmetrical=False, null=True, blank=True)
 
 class Author(models.Model):
     author_id = models.AutoField(primary_key=True,null=False)
     author_name = models.CharField(max_length=512,null=False)
+    paper = models.ManyToManyField(Paper)
     
-
-class WriteEntity(models.Model):
-    write_id = models.AutoField(primary_key=True,null=False)
-    paper = models.ForeignKey(Paper,on_delete=models.CASCADE)
-    author = models.ForeignKey(Author,on_delete=models.CASCADE)
 
 class Affiliation(models.Model):
     affiliation_id = models.AutoField(primary_key=True,null=False)
-    author = models.ForeignKey(Author,on_delete=models.CASCADE)
     affiliation_name = models.CharField(max_length=256,null=False)
+    author = models.ManyToManyField(Author)
 
-class Citation(models.Model):
-    citation_id = models.AutoField(primary_key=True,null=False)
-    cite_paper = models.ForeignKey(Paper,on_delete=models.CASCADE)
-    cited_paper_id = models.IntegerField(null=False)
+# class Citation(models.Model):
+#     citation_id = models.AutoField(primary_key=True,null=False)
+#     cite_paper = models.ForeignKey(Paper,on_delete=models.CASCADE)
+#     cited_paper_id = models.IntegerField(null=False)

@@ -4,4 +4,4 @@ from .models import *
 
 # Register your models here.
 
-admin.site.register([Paper,Author,WriteEntity,Affiliation,Citation])
+admin.site.register([Paper,Author,Affiliation])
