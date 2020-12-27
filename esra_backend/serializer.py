@@ -8,7 +8,7 @@ class AffiliationSerializer(ModelSerializer):
 
     class Meta:
         model = Affiliation
-        fields = '__all__'
+        fields = ('affiliation_name', 'author')
         extra_kwargs = {
             'author': {'write_only': True},
         }
@@ -16,11 +16,11 @@ class AffiliationSerializer(ModelSerializer):
 class AuthorSerializer(ModelSerializer):
 
     author_affiliations = AffiliationSerializer(source='affiliation_set',
-                                                many=True, read_only=True)
+                                                many=True)
 
     class Meta:
         model = Author
-        fields = '__all__'
+        fields = ('author_name', 'author_affiliations', 'paper')
         extra_kwargs = {
             'paper': {'write_only': True},
         }
@@ -28,8 +28,7 @@ class AuthorSerializer(ModelSerializer):
 
 class PaperSerializer(ModelSerializer):
 
-    paper_authors = AuthorSerializer(source='author_set', many=True, 
-                                     read_only=True)
+    paper_authors = AuthorSerializer(source='author_set', many=True)
 
     class Meta:
         model = Paper
