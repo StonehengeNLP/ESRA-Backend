@@ -7,7 +7,19 @@ from .models import *
 from .serializer import PaperSerializer
 
 
-class PaperGet(generics.ListAPIView):
+class PaperGet(generics.RetrieveAPIView):
+    """
+    GET Rest API view for requesting individual paper information.
+    Mainly used on Paper page
+    """
+
+    serializer_class = PaperSerializer
+    
+    def get_object(self):
+        obj = Paper.objects.prefetch_related('author_set').get(pk=self.request.data['paper_id'])
+        return obj
+    
+class PaperList(generics.ListAPIView):
     """
     GET Rest API view for requesting papers information.
     """
@@ -21,15 +33,12 @@ class PaperGet(generics.ListAPIView):
     def get_queryset(self):
         """
         This view should return a list of all the papers
-        This will requires JSON body contains list of 'paper_ids' 
+        This will requires JSON body contains 'keywords' 
         
+        :param keywords: text to be searched
         :return: [ paper_object_1, ... , paper_object_n ]
         """
-        paper_ids = self.request.data.get('paper_ids', None)
         keywords = self.request.data.get('keywords', None)
-        
-        if paper_ids:
-            return self._get_paper_by_ids(paper_ids)
         
         if keywords:
             # TODO: find papers using given keywords
