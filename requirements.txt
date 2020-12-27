@@ -1,3 +1,5 @@
 django
 djangorestframework
 django-environ
+sentence-transformers
+scipy
