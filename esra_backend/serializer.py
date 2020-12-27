@@ -3,6 +3,7 @@ from rest_framework.fields import Field
 from rest_framework.serializers import ModelSerializer, Serializer
 from .models import *
 
+
 class AffiliationSerializer(ModelSerializer):
 
     class Meta:
@@ -23,7 +24,7 @@ class AuthorSerializer(ModelSerializer):
         extra_kwargs = {
             'paper': {'write_only': True},
         }
-
+    
 
 class PaperSerializer(ModelSerializer):
 
