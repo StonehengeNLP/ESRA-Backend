@@ -1,5 +1,5 @@
 from django.urls import path,include
-from .views import *
+from .views import PaperGet, GetPapers
 
 urlpatterns = [
 
@@ -8,7 +8,7 @@ urlpatterns = [
     ),
     path(
         'paper/get_paper',
-        GetPaper.as_view(),
+        PaperGet.as_view(),
         name='get_paper'
     ),
     path(
