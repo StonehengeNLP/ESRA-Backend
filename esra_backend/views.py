@@ -2,9 +2,9 @@
 # from django.http import HttpResponse
 from rest_framework import permissions, status, generics
 # from rest_framework.views import APIView
-# from rest_framework.response import Response 
+from rest_framework.response import Response 
 from .models import *
-from .serializer import PaperSerializer
+from .serializer import PaperSerializer, AuthorSerializer, AffiliationSerializer
 
 
 class PaperGet(generics.RetrieveAPIView):
@@ -44,3 +44,17 @@ class PaperList(generics.ListAPIView):
             # TODO: find papers using given keywords
             paper_ids = [1]
             return self._get_paper_by_ids(paper_ids)
+
+class PaperPost(generics.CreateAPIView):
+    """
+    Post Rest API for adding new paper
+    """
+
+    def post(self, request, *args, **kwargs):
+        serializer = PaperSerializer(data=request.data)
+        if serializer.is_valid():
+            paper = serializer.save()
+            if paper:
+                json = serializer.data
+                return Response(json, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

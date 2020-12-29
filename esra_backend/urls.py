@@ -1,5 +1,5 @@
 from django.urls import path,include
-from .views import PaperGet
+from .views import PaperGet, PaperList, PaperPost
 
 urlpatterns = [
 
@@ -10,6 +10,16 @@ urlpatterns = [
         'paper/get_paper',
         PaperGet.as_view(),
         name='get_paper'
+    ),
+    path(
+        'paper/paper_list',
+        PaperList.as_view(),
+        name='paper_list'
+    ),
+    path(
+        'paper/create',
+        PaperPost.as_view(),
+        name='paper_create'
     ),
     
 ]
