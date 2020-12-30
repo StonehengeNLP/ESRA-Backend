@@ -9,38 +9,42 @@ class AffiliationSerializer(ModelSerializer):
 
     class Meta:
         model = Affiliation
-        fields = ('affiliation_name', 'author')
+        fields = "__all__"
         extra_kwargs = {
-            'author': {'write_only': True},
         }
     
     def create(self, validated_data):
-        affiliation_name = validated_data['affiliation_name']
-        instance = self.Meta.model.object.get_or_create(**validated_data)
+        instance, created = self.Meta.model.objects.get_or_create(**validated_data)
         return instance
 
 class AuthorSerializer(ModelSerializer):
 
-    author_affiliations = AffiliationSerializer(source='affiliation_set',
-                                                many=True)
-
     class Meta:
         model = Author
-        fields = ('author_name', 'author_affiliations', 'paper')
+        fields = "__all__"
         extra_kwargs = {
-            'paper': {'write_only': True},
         }
     
     def create(self, validated_data):
-        author_name = validated_data['author_name']
-        affiliation = validated_data.pop('affiliation')
-        instance = self.Meta.model.object.get_or_create(**validated_data)
+        instance, created = self.Meta.model.objects.get_or_create(**validated_data)
         return instance 
+
+class PaperAuthorAffiliationSerializer(ModelSerializer):
+    
+    author = AuthorSerializer(many=False, read_only=True)
+    affiliation = AffiliationSerializer(many=False, read_only=True)
+
+    class Meta:
+        model = PaperAuthorAffiliation
+        fields = "__all__"
 
 class PaperSerializer(ModelSerializer):
 
-    paper_authors = AuthorSerializer(source='author_set', many=True, 
-                                     read_only=True)
+    paper_authors = PaperAuthorAffiliationSerializer(
+        source='paperauthoraffiliation_set', 
+        many=True, 
+        read_only=True
+    )
     cited_by = SerializerMethodField()
 
     class Meta:
@@ -48,7 +52,6 @@ class PaperSerializer(ModelSerializer):
         fields = '__all__'
         read_only_fields = ('paper_id', 'paper_authors',)
         extra_kwargs = {
-            # 'paper_id': {'read_only': True},
         }
 
     def get_cited_by(self, obj):

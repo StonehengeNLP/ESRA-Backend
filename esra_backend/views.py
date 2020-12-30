@@ -1,10 +1,11 @@
 # from django.shortcuts import render
 # from django.http import HttpResponse
-from rest_framework import permissions, status, generics
+from rest_framework import permissions, serializers, status, generics
 # from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
-from .serializer import PaperSerializer, AuthorSerializer, AffiliationSerializer
+from .serializer import (PaperSerializer, AuthorSerializer, 
+                         AffiliationSerializer, PaperAuthorAffiliationSerializer)
 
 
 class PaperGet(generics.RetrieveAPIView):
@@ -16,7 +17,8 @@ class PaperGet(generics.RetrieveAPIView):
     serializer_class = PaperSerializer
     
     def get_object(self):
-        obj = Paper.objects.prefetch_related('author_set').get(pk=self.request.data['paper_id'])
+        obj = Paper.objects.prefetch_related('paperauthoraffiliation_set')\
+                           .get(pk=self.request.data['paper_id'])
         return obj
     
 class PaperList(generics.ListAPIView):
@@ -51,10 +53,64 @@ class PaperPost(generics.CreateAPIView):
     """
 
     def post(self, request, *args, **kwargs):
-        serializer = PaperSerializer(data=request.data)
+        serializer = PaperSerializer(data=request.data,
+                                     many=isinstance(request.data, list))
         if serializer.is_valid():
             paper = serializer.save()
             if paper:
+                json = serializer.data
+                return Response(json, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AuthorPost(generics.CreateAPIView):
+    """
+    Post Rest API for adding new author
+    """
+
+    def post(self, request, *args, **kwargs):
+        serializer = AuthorSerializer(data=request.data,
+                                      many=isinstance(request.data, list))
+        if serializer.is_valid():
+            author = serializer.save()
+            if author:
+                json = serializer.data
+                return Response(json, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AffiliationPost(generics.CreateAPIView):
+    """
+    Post Rest API for adding new affiliation
+    """
+
+    def post(self, request, *args, **kwargs):
+        serializer = AffiliationSerializer(data=request.data, 
+                                           many=isinstance(request.data, list))
+        if serializer.is_valid():
+            affiliation = serializer.save()
+            if affiliation:
+                json = serializer.data
+                return Response(json, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PaperPatch(generics.UpdateAPIView):
+    """
+    Patch Rest API for update paper relation
+    """
+
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+class PaperAuthorAffilationPost(generics.CreateAPIView):
+    """
+    Post Rest API for adding paper-author-affiliation relations
+    """
+
+    def post(self, request, *args, **kwargs):
+        serializer = PaperAuthorAffiliationSerializer(data=request.data, 
+                                           many=isinstance(request.data, list))
+        if serializer.is_valid():
+            affiliation = serializer.save()
+            if affiliation:
                 json = serializer.data
                 return Response(json, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
