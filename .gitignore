@@ -110,6 +110,9 @@ media/
 #my db file
 test
 
+# csv files
+*.csv
+
 # Ignore Django Migrations in Development if you are working on team
 
 # Only for Development only
