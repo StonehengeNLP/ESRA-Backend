@@ -31,12 +31,20 @@ class AuthorSerializer(ModelSerializer):
 
 class PaperAuthorAffiliationSerializer(ModelSerializer):
     
-    author = AuthorSerializer(many=False, read_only=True)
-    affiliation = AffiliationSerializer(many=False, read_only=True)
+    author_info = AuthorSerializer(source='author',many=False, read_only=True)
+    affiliation_info = AffiliationSerializer(source='affiliation', many=False, read_only=True)
 
     class Meta:
         model = PaperAuthorAffiliation
-        fields = "__all__"
+        raad_only_fields = ('author_info', 'affiliation_info', )
+        fields = ('paper', 'author', 'affiliation', 'author_info', 
+                  'affiliation_info', )
+        extra_kwargs = {
+            'paper': {'write_only': True},
+            'author': {'write_only': True},
+            'affiliation': {'write_only': True},
+        }
+
 
 class PaperSerializer(ModelSerializer):
 
