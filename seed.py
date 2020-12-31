@@ -124,7 +124,8 @@ if __name__ == "__main__":
     df = pd.read_csv('cscl-cleaned-2020-12-29.csv')
     df = df.rename(columns={
         'authors_affitiation': 'authors_affiliation',
-        'title': 'paper_title'
+        'title': 'paper_title',
+        'conference_name': 'conference'
     })
 
     df.authors_affiliation = df.authors_affiliation.apply(lambda x: eval(x))
