@@ -14,7 +14,7 @@ from esra_backend.models import *
 
 def add_papers(df):
     cols = ['paper_title', 'abstract', 'arxiv_id', 'mag_id', 
-        'citation_count', 'publish_date', 'jornal_name', 'conference']
+        'citation_count', 'publish_date', 'journal_name', 'conference']
     papers = df[cols]
     papers_list = papers.to_dict('records')
     paper_ids = dict()
