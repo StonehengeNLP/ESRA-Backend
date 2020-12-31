@@ -23,4 +23,5 @@ class Affiliation(models.Model):
 class PaperAuthorAffiliation(models.Model):
     paper = models.ForeignKey(Paper, on_delete=models.CASCADE)
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
-    affiliation = models.ForeignKey(Affiliation, on_delete=models.CASCADE)
+    affiliation = models.ForeignKey(Affiliation, on_delete=models.CASCADE,
+                                    null=True, blank=True)
