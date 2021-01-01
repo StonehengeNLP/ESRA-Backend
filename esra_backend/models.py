@@ -1,5 +1,5 @@
 from django.db import models
-from datetime import datetime
+import datetime
 
 class Paper(models.Model):
     paper_id = models.AutoField(primary_key=True, null=False)
@@ -15,7 +15,7 @@ class Paper(models.Model):
 
     @property
     def popularity(self):
-        days_diff = datetime.now() - self.publish_date
+        days_diff = datetime.date.today() - self.publish_date
         return self.citation_count/days_diff.days
 
 class Author(models.Model):
