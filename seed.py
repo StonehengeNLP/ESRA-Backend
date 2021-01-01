@@ -118,66 +118,75 @@ def re_assing_relations(paper_relations):
         affiliation_ids=affiliation_ids
     )
 
+def add_journal_name():
+    papers = Paper.objects.all()
+    for paper in papers:
+        paper.journal_name = "arxiv computation and language"
+        paper.save()
+    print("journal_name yay")
+    return True
+
+
 if __name__ == "__main__":
     
+    add_journal_name()
+    # df = pd.read_csv('cscl-cleaned-2020-12-29.csv')
+    # df = df.rename(columns={
+    #     'authors_affitiation': 'authors_affiliation',
+    #     'title': 'paper_title',
+    #     'conference_name': 'conference'
+    # })
 
-    df = pd.read_csv('cscl-cleaned-2020-12-29.csv')
-    df = df.rename(columns={
-        'authors_affitiation': 'authors_affiliation',
-        'title': 'paper_title',
-        'conference_name': 'conference'
-    })
-
-    df.authors_affiliation = df.authors_affiliation.apply(lambda x: eval(x))
-    df.RId = df.RId.fillna('[]')
-    df.RId = df.RId.apply(lambda x: eval(x))
-    # df['conference'] = 'IDK Con'
+    # df.authors_affiliation = df.authors_affiliation.apply(lambda x: eval(x))
+    # df.RId = df.RId.fillna('[]')
+    # df.RId = df.RId.apply(lambda x: eval(x))
+    # # df['conference'] = 'IDK Con'
 
 
-    # authors & affiliations
-    cols = ['paper_title', 'authors_affiliation']
-    author_set = set()
-    affiliation_set = set()
-    paper_relations = dict()
+    # # authors & affiliations
+    # cols = ['paper_title', 'authors_affiliation']
+    # author_set = set()
+    # affiliation_set = set()
+    # paper_relations = dict()
 
-    for index, row in df[cols].iterrows():
-        title = row['paper_title']
-        for relation in row['authors_affiliation']:
-            author_name = relation['AuN']
-            affiliation_name = relation.get('AfN', '')
-            author_set.add(author_name)
-            affiliation_set.add(affiliation_name)
-            if title not in paper_relations:
-                paper_relations[title] = []
-            paper_relations.get(title, []).append(
-                (author_name, affiliation_name,)
-            )
-    authors_data = [{'author_name':name} for name in author_set]
-    affiliations_data = [{'affiliation_name':name} for name in affiliation_set]
+    # for index, row in df[cols].iterrows():
+    #     title = row['paper_title']
+    #     for relation in row['authors_affiliation']:
+    #         author_name = relation['AuN']
+    #         affiliation_name = relation.get('AfN', '')
+    #         author_set.add(author_name)
+    #         affiliation_set.add(affiliation_name)
+    #         if title not in paper_relations:
+    #             paper_relations[title] = []
+    #         paper_relations.get(title, []).append(
+    #             (author_name, affiliation_name,)
+    #         )
+    # authors_data = [{'author_name':name} for name in author_set]
+    # affiliations_data = [{'affiliation_name':name} for name in affiliation_set]
     
 
-    # papers 
-    paper_ids = add_papers(df)
-    author_ids = add_author(authors_data)
-    affiliation_ids = add_affiliation(affiliations_data)
-    add_paper_relation(
-        paper_relations=paper_relations,
-        paper_ids=paper_ids,
-        author_ids=author_ids,
-        affiliation_ids=affiliation_ids
-    )
+    # # papers 
+    # paper_ids = add_papers(df)
+    # author_ids = add_author(authors_data)
+    # affiliation_ids = add_affiliation(affiliations_data)
+    # add_paper_relation(
+    #     paper_relations=paper_relations,
+    #     paper_ids=paper_ids,
+    #     author_ids=author_ids,
+    #     affiliation_ids=affiliation_ids
+    # )
 
-    # re-assign
-    # re_assing_relations(paper_relations)
+    # # re-assign
+    # # re_assing_relations(paper_relations)
 
-    # Citations 
-    cite_cols = ['mag_id', 'RId']
-    cite_df =  df[cite_cols]
-    citations = {
-        row['mag_id']:row['RId'] for _,row in cite_df.iterrows()
-    }
-    paper_mag_ids = get_paper_mag_ids()
-    print(
-        add_cite_relations(paper_mag_ids,citations)
-    )
+    # # Citations 
+    # cite_cols = ['mag_id', 'RId']
+    # cite_df =  df[cite_cols]
+    # citations = {
+    #     row['mag_id']:row['RId'] for _,row in cite_df.iterrows()
+    # }
+    # paper_mag_ids = get_paper_mag_ids()
+    # print(
+    #     add_cite_relations(paper_mag_ids,citations)
+    # )
     # print(paper_mag_ids)
