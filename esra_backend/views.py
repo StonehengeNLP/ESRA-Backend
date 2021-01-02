@@ -1,7 +1,7 @@
 # from django.shortcuts import render
 # from django.http import HttpResponse
 from rest_framework import permissions, serializers, status, generics
-# from rest_framework.views import APIView
+from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
 from .serializer import (PaperSerializer, AuthorSerializer, 
@@ -114,3 +114,21 @@ class PaperAuthorAffilationPost(generics.CreateAPIView):
                 json = serializer.data
                 return Response(json, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SearchGet(APIView):
+    """
+    Simple Rest API view for retrieving search result
+    """
+
+    def get(self, request, format=None):
+        """
+        Return ranked search result 
+        """
+        q = request.data['q']
+        limit = request.data['lim']
+        skip = request.data.get('skip', 0)
+        # TODO: improve ranking algorithm
+        papers = Paper.objects.filter(abstract__icontains=q)
+        papers = sorted(papers, key=lambda x: x.popularity, reverse=True)
+        papers = [paper.paper_id for paper in papers]
+        return Response(papers[skip:skip+limit], status=status.HTTP_200_OK)
