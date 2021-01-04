@@ -1,7 +1,7 @@
 # from django.shortcuts import render
 # from django.http import HttpResponse
 import requests
-import json
+import urllib.parse
 from rest_framework import permissions, serializers, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response 
@@ -19,15 +19,35 @@ class AutoComplete(APIView):
     
     # TODO: change from local to production url
     # autocomplete_url = "https://localhost:5000/complete?q={keywords}"
-    autocomplete_url = "http://35.247.162.211/complete?q={keywords}"
+    autocomplete_url = "http://35.247.162.211/complete"
 
     def get(self, request, format=None):
-        keywords = self.request.GET.get('keywords', '').replace(' ','%20')
-        response = requests.get(self.autocomplete_url.format(keywords=keywords))
+        payload = urllib.parse.urlencode({"q" : self.request.GET.get('keywords', '')})
+        response = requests.get(self.autocomplete_url,params=payload)
         ret = [
             {"value": k, "label": k} for k in response.json()['sentences']
         ]
         return Response(ret,status=status.HTTP_200_OK)
+
+class GraphGet(APIView):
+    """
+        GET Rest API view for send request to graph database manager
+        to get graph
+    """
+
+    # TODO: change from local to production url
+    graph_url = "http://35.247.162.211/graph"
+
+    def get(self, request, format=None):
+        payload = urllib.parse.urlencode({
+            "keyword": self.request.GET.get('keyword', ''),
+            "paper_title": self.request.GET.get('paper_title', ''),
+            "limit": self.request.GET.get('limit', 0)
+        })
+        print(payload)
+        response = requests.get(self.graph_url,params=payload)
+        return Response(response.json(),status=status.HTTP_200_OK)
+
         
 class PaperGet(generics.RetrieveAPIView):
     """
@@ -145,6 +165,8 @@ class SearchGet(APIView):
     Simple Rest API view for retrieving search result
     """
 
+    preprocess_url = "http://35.247.162.211/preprocess"
+
     def _get_keys(self, obj):
         LIMIT = 1
         keywords = []
@@ -171,7 +193,7 @@ class SearchGet(APIView):
         q = request.GET.get('q', '')
         limit = request.GET.get('lim',5)
         skip = request.GET.get('skip', 0)
-        response = requests.post("http://localhost:5000/preprocess",json={"text": q})
+        response = requests.post(self.preprocess_url,json={"text": q})
 
         # TODO: improve ranking algorithm
         keywords = self._get_keys(response.json())
