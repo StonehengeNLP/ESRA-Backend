@@ -18,7 +18,8 @@ class AutoComplete(APIView):
     """
     
     # TODO: change from local to production url
-    autocomplete_url = "http://localhost:5000/complete?q={keywords}"
+    # autocomplete_url = "https://localhost:5000/complete?q={keywords}"
+    autocomplete_url = "http://35.247.162.211/complete?q={keywords}"
 
     def get(self, request, format=None):
         keywords = self.request.GET.get('keywords', '').replace(' ','%20')
@@ -37,8 +38,11 @@ class PaperGet(generics.RetrieveAPIView):
     serializer_class = PaperSerializer
     
     def get_object(self):
-        obj = Paper.objects.prefetch_related('paperauthoraffiliation_set')\
-                           .get(pk=self.request.data['paper_id'])
+        try:
+            obj = Paper.objects.prefetch_related('paperauthoraffiliation_set')\
+                            .get(pk=self.request.GET.get('paper_id', None))
+        except Paper.DoesNotExist:
+            return None
         return obj
     
 class PaperList(generics.ListAPIView):
@@ -49,7 +53,7 @@ class PaperList(generics.ListAPIView):
     serializer_class = PaperSerializer
 
     def _get_paper_by_ids(self, paper_ids):
-        return Paper.objects.prefetch_related('author_set', 'author_set__affiliation_set').filter(
+        return Paper.objects.prefetch_related('paperauthoraffiliation_set').filter(
                 paper_id__in=paper_ids)
     
     def get_queryset(self):
@@ -60,11 +64,12 @@ class PaperList(generics.ListAPIView):
         :param keywords: text to be searched
         :return: [ paper_object_1, ... , paper_object_n ]
         """
-        keywords = self.request.data.get('keywords', None)
+        paper_ids = self.request.GET.get('paper_ids', None)
         
-        if keywords:
+        if paper_ids:
+            paper_ids = [int(i) for i in paper_ids.split(',')]
+            print(paper_ids)
             # TODO: find papers using given keywords
-            paper_ids = [1]
             return self._get_paper_by_ids(paper_ids)
 
 class PaperPost(generics.CreateAPIView):
@@ -153,7 +158,9 @@ class SearchGet(APIView):
     def _get_papers(self, keywords):
         papers = []
         for keyword in keywords:
-            temp_papers = Paper.objects.filter(Q(abstract__icontains=keyword) | Q(paper_title__icontains=keyword))
+            temp_papers = Paper.objects.filter(
+                Q(abstract__icontains=keyword) | Q(paper_title__icontains=keyword)
+            )
             papers += temp_papers
         return list(set(papers))
 
@@ -161,9 +168,9 @@ class SearchGet(APIView):
         """
         Return ranked search result 
         """
-        q = request.data['q']
-        limit = request.data.get('lim',5)
-        skip = request.data.get('skip', 0)
+        q = request.GET.get('q', '')
+        limit = request.GET.get('lim',5)
+        skip = request.GET.get('skip', 0)
         response = requests.post("http://localhost:5000/preprocess",json={"text": q})
 
         # TODO: improve ranking algorithm
