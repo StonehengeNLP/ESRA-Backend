@@ -17,10 +17,16 @@ class AutoComplete(APIView):
         to get autocompletion.
     """
     
+    # TODO: change from local to production url
+    autocomplete_url = "http://localhost:5000/complete?q={keywords}"
+
     def get(self, request, format=None):
-        keywords = self.request.data['keywords'].replace(' ','%20')
-        response = requests.get(f"http://localhost:5000/complete?q={keywords}") #local_test
-        return Response(response.json(),status=status.HTTP_200_OK)
+        keywords = self.request.GET.get('keywords', '').replace(' ','%20')
+        response = requests.get(self.autocomplete_url.format(keywords=keywords))
+        ret = [
+            {"value": k, "label": k} for k in response.json()['sentences']
+        ]
+        return Response(ret,status=status.HTTP_200_OK)
         
 class PaperGet(generics.RetrieveAPIView):
     """
