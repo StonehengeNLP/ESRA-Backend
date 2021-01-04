@@ -1,10 +1,12 @@
 # from django.shortcuts import render
 # from django.http import HttpResponse
+import requests
+import json
 from rest_framework import permissions, serializers, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
-import requests
+from django.db.models import Q
 from .serializer import (PaperSerializer, AuthorSerializer, 
                          AffiliationSerializer, PaperAuthorAffiliationSerializer)
 
@@ -132,15 +134,35 @@ class SearchGet(APIView):
     Simple Rest API view for retrieving search result
     """
 
+    def _get_keys(self, obj):
+        LIMIT = 1
+        keywords = []
+        for key in obj.keys():
+            keywords.append(key)
+            for i in range(LIMIT):
+                if i < len(obj[key]):
+                    keywords.append(obj[key][i])
+        return keywords
+
+    def _get_papers(self, keywords):
+        papers = []
+        for keyword in keywords:
+            temp_papers = Paper.objects.filter(Q(abstract__icontains=keyword) | Q(paper_title__icontains=keyword))
+            papers += temp_papers
+        return list(set(papers))
+
     def get(self, request, format=None):
         """
         Return ranked search result 
         """
         q = request.data['q']
-        limit = request.data['lim']
+        limit = request.data.get('lim',5)
         skip = request.data.get('skip', 0)
+        response = requests.post("http://localhost:5000/preprocess",json={"text": q})
+
         # TODO: improve ranking algorithm
-        papers = Paper.objects.filter(abstract__icontains=q)
+        keywords = self._get_keys(response.json())
+        papers = self._get_papers(keywords)
         papers = sorted(papers, key=lambda x: x.popularity, reverse=True)
         papers = [paper.paper_id for paper in papers]
         return Response(papers[skip:skip+limit], status=status.HTTP_200_OK)
