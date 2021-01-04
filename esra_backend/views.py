@@ -4,10 +4,22 @@ from rest_framework import permissions, serializers, status, generics
 from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
+import requests
 from .serializer import (PaperSerializer, AuthorSerializer, 
                          AffiliationSerializer, PaperAuthorAffiliationSerializer)
 
 
+class AutoComplete(APIView):
+    """
+        GET Rest API view for send request to graph database manager
+        to get autocompletion.
+    """
+    
+    def get(self, request, format=None):
+        keywords = self.request.data['keywords'].replace(' ','%20')
+        response = requests.get(f"http://localhost:5000/complete?q={keywords}") #local_test
+        return Response(response.json(),status=status.HTTP_200_OK)
+        
 class PaperGet(generics.RetrieveAPIView):
     """
     GET Rest API view for requesting individual paper information.

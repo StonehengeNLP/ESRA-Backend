@@ -1,12 +1,17 @@
 from django.urls import path,include
 from .views import (PaperGet, PaperList, PaperPost, 
                     AuthorPost, AffiliationPost, PaperAuthorAffilationPost,
-                    SearchGet,)
+                    SearchGet, AutoComplete)
 
 urlpatterns = [
 
     path('api/',
         include('rest_framework.urls',namespace='rest_framework')
+    ),
+    path(
+        'complete',
+        AutoComplete.as_view(),
+        name='auto_complete'
     ),
     path(
         'paper/get_paper',
