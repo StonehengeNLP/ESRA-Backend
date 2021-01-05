@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
 from django.db.models import Q
-from .serializer import (PaperSerializer, AuthorSerializer, 
+from .serializer import (PaperSerializer, AuthorSerializer, PaperListSerializer,
                          AffiliationSerializer, PaperAuthorAffiliationSerializer)
 
 
@@ -70,7 +70,9 @@ class PaperList(generics.ListAPIView):
     GET Rest API view for requesting papers information.
     """
 
-    serializer_class = PaperSerializer
+    # TODO: adding explanation retrieving from graph manager to response data
+
+    serializer_class = PaperListSerializer
 
     def _get_paper_by_ids(self, paper_ids):
         return Paper.objects.prefetch_related('paperauthoraffiliation_set').filter(
@@ -78,19 +80,17 @@ class PaperList(generics.ListAPIView):
     
     def get_queryset(self):
         """
-        This view should return a list of all the papers
-        This will requires JSON body contains 'keywords' 
-        
-        :param keywords: text to be searched
-        :return: [ paper_object_1, ... , paper_object_n ]
+        Return the queryset for retrieving papers information
         """
         paper_ids = self.request.GET.get('paper_ids', None)
-        
+
         if paper_ids:
             paper_ids = [int(i) for i in paper_ids.split(',')]
-            print(paper_ids)
-            # TODO: find papers using given keywords
             return self._get_paper_by_ids(paper_ids)
+    
+    # def get(self, request, *args, **kwargs):
+
+    #     return 
 
 class PaperPost(generics.CreateAPIView):
     """
@@ -191,8 +191,8 @@ class SearchGet(APIView):
         Return ranked search result 
         """
         q = request.GET.get('q', '')
-        limit = request.GET.get('lim',5)
-        skip = request.GET.get('skip', 0)
+        limit = int(request.GET.get('lim',10))
+        skip = int(request.GET.get('skip', 0))
         response = requests.post(self.preprocess_url,json={"text": q})
 
         # TODO: improve ranking algorithm
