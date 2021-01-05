@@ -6,7 +6,9 @@ from .models import *
 
 
 class AffiliationSerializer(ModelSerializer):
-
+    """
+    Serializer for retrieveing/adding affiliation information
+    """
     class Meta:
         model = Affiliation
         fields = "__all__"
@@ -18,7 +20,9 @@ class AffiliationSerializer(ModelSerializer):
         return instance
 
 class AuthorSerializer(ModelSerializer):
-
+    """
+    Serializer for retrieving/adding author information
+    """
     class Meta:
         model = Author
         fields = "__all__"
@@ -47,6 +51,9 @@ class PaperAuthorAffiliationSerializer(ModelSerializer):
 
 
 class PaperSerializer(ModelSerializer):
+    """
+    Serializer for retrieving individual paper information
+    """
 
     paper_authors = PaperAuthorAffiliationSerializer(
         source='paperauthoraffiliation_set', 
@@ -65,3 +72,28 @@ class PaperSerializer(ModelSerializer):
     def get_cited_by(self, obj):
         return Paper.cite_to.through.objects.filter(to_paper_id=obj.paper_id) \
                                             .values_list('from_paper_id', flat=True)
+
+class PaperListSerializer(ModelSerializer):
+    """
+    Serializer uses for retrieveing paper information list only, do not use for
+    creating new paper
+    """
+
+    authors = SerializerMethodField()
+    affiliations = SerializerMethodField()
+
+    class Meta:
+        model = Paper
+        fields = ('paper_id', 'paper_title', 'conference', 'abstract', 
+                  'authors', 'affiliations', )
+    
+    def get_authors(self, obj):
+        return obj.paperauthoraffiliation_set.all().values_list(
+            'author__author_name', flat=True
+        )
+
+    def get_affiliations(self, obj):
+        return obj.paperauthoraffiliation_set.all().values_list(
+            'affiliation__affiliation_name', flat=True
+        )
+
