@@ -70,9 +70,8 @@ class PaperList(generics.ListAPIView):
     GET Rest API view for requesting papers information.
     """
 
-    # TODO: adding explanation retrieving from graph manager to response data
-
-    serializer_class = PaperListSerializer
+    # TODO: adding explanation retrieving from graph manager to response 
+    explanation_url = 'http://35.247.162.211/explain'
 
     def _get_paper_by_ids(self, paper_ids):
         return Paper.objects.prefetch_related('paperauthoraffiliation_set').filter(
@@ -88,9 +87,24 @@ class PaperList(generics.ListAPIView):
             paper_ids = [int(i) for i in paper_ids.split(',')]
             return self._get_paper_by_ids(paper_ids)
     
-    # def get(self, request, *args, **kwargs):
+    def list(self, request, *args, **kwargs):
+        papers = self.get_queryset()
+        try:
+            serializer = PaperListSerializer(instance=papers,many=True)
+            response_data = serializer.data
+            paper_titles = [paper['paper_title'] for paper in response_data]
+            explanations = requests.post(self.explanation_url, json={
+                'keyword': request.GET.get('keywords'),
+                'papers': paper_titles
+            })
+            
+            explanation_json = explanations.json()['explanations']
 
-    #     return 
+            for i, paper in enumerate(response_data):
+                paper['explanation'] = explanation_json[i]
+            return Response(response_data, status=status.HTTP_200_OK)
+        except:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 class PaperPost(generics.CreateAPIView):
     """
