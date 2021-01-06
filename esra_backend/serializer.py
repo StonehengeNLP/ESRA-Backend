@@ -50,29 +50,6 @@ class PaperAuthorAffiliationSerializer(ModelSerializer):
         }
 
 
-class PaperSerializer(ModelSerializer):
-    """
-    Serializer for retrieving individual paper information
-    """
-
-    paper_authors = PaperAuthorAffiliationSerializer(
-        source='paperauthoraffiliation_set', 
-        many=True, 
-        read_only=True
-    )
-    cited_by = SerializerMethodField()
-
-    class Meta:
-        model = Paper
-        fields = '__all__'
-        read_only_fields = ('paper_id', 'paper_authors',)
-        extra_kwargs = {
-        }
-
-    def get_cited_by(self, obj):
-        return Paper.cite_to.through.objects.filter(to_paper_id=obj.paper_id) \
-                                            .values_list('from_paper_id', flat=True)
-
 class PaperListSerializer(ModelSerializer):
     """
     Serializer uses for retrieveing paper information list only, do not use for
@@ -97,3 +74,17 @@ class PaperListSerializer(ModelSerializer):
             'affiliation__affiliation_name', flat=True
         )
 
+class PaperSerializer(PaperListSerializer):
+    """
+    Serializer for retrieving individual paper information
+    """
+    cited_by = SerializerMethodField()
+
+    class Meta(PaperListSerializer.Meta):
+        model = Paper
+        fields = PaperListSerializer.Meta.fields + ('cite_to', 'cited_by', 'citation_count')
+        extra_kwargs = {}
+
+    def get_cited_by(self, obj):
+        return Paper.cite_to.through.objects.filter(to_paper_id=obj.paper_id) \
+                                            .values_list('from_paper_id', flat=True)
