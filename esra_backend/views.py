@@ -93,17 +93,21 @@ class PaperList(generics.ListAPIView):
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
             paper_titles = [paper['paper_title'] for paper in response_data]
-            explanations = requests.post(self.explanation_url, json={
-                'keyword': request.GET.get('keywords'),
-                'papers': paper_titles
-            })
+            no_ex = request.GET.get('no_ex', '')
             
-            explanation_json = explanations.json()['explanations']
+            if no_ex == '':
+                explanations = requests.post(self.explanation_url, json={
+                    'keyword': request.GET.get('keywords', None),
+                    'papers': paper_titles
+                })
+                
+                explanation_json = explanations.json()['explanations']
+                for i, paper in enumerate(response_data):
+                    paper['explanation'] = explanation_json[i]
 
-            for i, paper in enumerate(response_data):
-                paper['explanation'] = explanation_json[i]
             return Response(response_data, status=status.HTTP_200_OK)
-        except:
+        except Exception as e:
+            print(e)
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
 class PaperPost(generics.CreateAPIView):
