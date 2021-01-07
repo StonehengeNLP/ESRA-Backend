@@ -44,9 +44,23 @@ class GraphGet(APIView):
             "paper_title": self.request.GET.get('paper_title', ''),
             "limit": self.request.GET.get('limit', 0)
         })
-        print(payload)
+        # print(payload)
         response = requests.get(self.graph_url,params=payload)
-        return Response(response.json(),status=status.HTTP_200_OK)
+        relations = response.json().get('graph', [])
+        nodes = set()
+        links = list()
+        for relation in relations[0]:
+            relation_name, ent_1, ent_2 = relation
+            ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
+            nodes.update([ent_1[0], ent_2[0]])
+            links.append({
+                'source': ent_1[0],
+                'target': ent_2[0],
+                'labelProperty': relation_name,
+            })
+        nodes = [{'id': name} for name in nodes]
+        data = {'nodes': nodes, 'links': links}
+        return Response(data,status=status.HTTP_200_OK)
 
         
 class PaperGet(generics.RetrieveAPIView):
