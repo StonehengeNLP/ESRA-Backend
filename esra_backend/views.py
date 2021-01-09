@@ -49,14 +49,14 @@ class GraphGet(APIView):
         relations = response.json().get('graph', [])
         nodes = set()
         links = list()
-        for relation in relations[0]:
+        for relation in relations:
             relation_name, ent_1, ent_2 = relation
             ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
             nodes.update([ent_1[0], ent_2[0]])
             links.append({
                 'source': ent_1[0],
                 'target': ent_2[0],
-                'labelProperty': relation_name,
+                'label': relation_name,
             })
         nodes = [{'id': name} for name in nodes]
         data = {'nodes': nodes, 'links': links}
@@ -106,13 +106,19 @@ class PaperList(generics.ListAPIView):
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
-            paper_titles = [paper['paper_title'] for paper in response_data]
+            paper_titles = []
+            abstracts = []
+            for paper in response_data:
+                paper_titles.append(paper['paper_title'])
+                abstracts.append(paper['abstract'])
+
             no_ex = request.GET.get('no_ex', '')
             
             if no_ex == '':
                 explanations = requests.post(self.explanation_url, json={
                     'keyword': request.GET.get('keywords', None),
-                    'papers': paper_titles
+                    'papers': paper_titles,
+                    'abstracts': abstracts,
                 })
                 
                 explanation_json = explanations.json()['explanations']
