@@ -210,14 +210,13 @@ class SearchGet(APIView):
         keywords = []
         res = {}
         for key in obj.keys():
+            if key not in res.keys():
+                res[key] = []
             for i in range(LIMIT):
                 keywords.append(key)
                 if i < len(obj[key]):
                     keywords.append(obj[key][i])
-                    if key not in res.keys():
-                        res[key] = [obj[key][i]]
-                    else:
-                        res[key].append(obj[key][i])
+                    res[key].append(obj[key][i])
         return keywords,res
 
 
@@ -238,8 +237,11 @@ class SearchGet(APIView):
 
     def _keyword_score(self,max_n_keyword,n_keyword):
         MAX_KEYWORD_SCORE = 10
-        keyword_score = (n_keyword/max_n_keyword) * 40
-        return keyword_score
+        if max_n_keyword == 0:
+            return 0
+        else:
+            keyword_score = (n_keyword/max_n_keyword) * MAX_KEYWORD_SCORE
+            return keyword_score
 
     def get(self, request, format=None):
         """
@@ -258,7 +260,7 @@ class SearchGet(APIView):
         papers_score = {}
         for paper in papers:
             papers_score[paper.paper_id] = self._normalize_score(paper.popularity,min(scores),max(scores),0,100)
-        
+
         #score from keyword(s) included
         for paper in papers:
             n_keyword = 0
@@ -273,7 +275,6 @@ class SearchGet(APIView):
             papers_score[paper.paper_id] += self._keyword_score(len(cleaned_response.keys()),n_keyword)
         
         sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: -score[1])).keys()]
-
         # papers = sorted(papers, key=lambda x: x.popularity, reverse=True)
         # papers = [paper.paper_id for paper in papers]
         return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
