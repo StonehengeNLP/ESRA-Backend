@@ -202,21 +202,38 @@ class SearchGet(APIView):
     def _get_keys(self, obj):
         LIMIT = 1
         keywords = []
+        res = {}
         for key in obj.keys():
-            keywords.append(key)
             for i in range(LIMIT):
+                keywords.append(key)
                 if i < len(obj[key]):
                     keywords.append(obj[key][i])
-        return keywords
+                    if key not in res.keys():
+                        res[key] = [obj[key][i]]
+                    else:
+                        res[key].append(obj[key][i])
+        return keywords,res
+
 
     def _get_papers(self, keywords):
+        mapping_keyword_id = {}
         papers = []
         for keyword in keywords:
             temp_papers = Paper.objects.filter(
                 Q(abstract__icontains=keyword) | Q(paper_title__icontains=keyword)
             )
+            mapping_keyword_id[keyword] = [paper.paper_id for paper in temp_papers]
             papers += temp_papers
-        return list(set(papers))
+        return list(set(papers)),mapping_keyword_id
+
+    def _normalize_score(self,score,old_min,old_max,new_min,new_max):
+        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
+        return normalized_score
+
+    def _keyword_score(self,max_n_keyword,n_keyword):
+        MAX_KEYWORD_SCORE = 10
+        keyword_score = (n_keyword/max_n_keyword) * 40
+        return keyword_score
 
     def get(self, request, format=None):
         """
@@ -226,10 +243,31 @@ class SearchGet(APIView):
         limit = int(request.GET.get('lim',10))
         skip = int(request.GET.get('skip', 0))
         response = requests.post(self.preprocess_url,json={"text": q})
-
         # TODO: improve ranking algorithm
-        keywords = self._get_keys(response.json())
-        papers = self._get_papers(keywords)
-        papers = sorted(papers, key=lambda x: x.popularity, reverse=True)
-        papers = [paper.paper_id for paper in papers]
-        return Response(papers[skip:skip+limit], status=status.HTTP_200_OK)
+        keywords,cleaned_response = self._get_keys(response.json())
+        papers,mapping_keyword_id = self._get_papers(keywords)
+        
+        #score from popularity -> normailized in range [0,100]
+        scores = [paper.popularity for paper in papers]
+        papers_score = {}
+        for paper in papers:
+            papers_score[paper.paper_id] = self._normalize_score(paper.popularity,min(scores),max(scores),0,100)
+        
+        #score from keyword(s) included
+        for paper in papers:
+            n_keyword = 0
+            for keyword in cleaned_response.keys():
+                if paper.paper_id in mapping_keyword_id[keyword]:
+                    n_keyword += 1
+                else:
+                    for semantic_keyword in cleaned_response[keyword]:
+                        if paper.paper_id in mapping_keyword_id[semantic_keyword]:
+                            n_keyword += 1
+                            break
+            papers_score[paper.paper_id] += self._keyword_score(len(cleaned_response.keys()),n_keyword)
+        
+        sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: -score[1])).keys()]
+
+        # papers = sorted(papers, key=lambda x: x.popularity, reverse=True)
+        # papers = [paper.paper_id for paper in papers]
+        return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
