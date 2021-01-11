@@ -245,7 +245,7 @@ class SearchGet(APIView):
         return normalized_score
 
     def _keyword_score(self,max_n_keyword,n_keyword):
-        MAX_KEYWORD_SCORE = 50
+        MAX_KEYWORD_SCORE = 100
         if max_n_keyword == 0:
             return 0
         else:
