@@ -224,9 +224,18 @@ class SearchGet(APIView):
         mapping_keyword_id = {}
         papers = []
         for keyword in keywords:
+
+            # regx
+            regx = r'\b{}(s|es){{0,1}}\b'.format(keyword)
             temp_papers = Paper.objects.filter(
-                Q(abstract__icontains=keyword) | Q(paper_title__icontains=keyword)
+                Q(abstract__iregex=regx) | Q(paper_title__iregex=regx)
             )
+
+            # # contains
+            # temp_papers = Paper.objects.filter(
+            #     Q(abstract__icontains=keyword) | Q(paper_title__icontains=keyword)
+            # )
+
             mapping_keyword_id[keyword] = [paper.paper_id for paper in temp_papers]
             papers += temp_papers
         return list(set(papers)),mapping_keyword_id
@@ -236,7 +245,7 @@ class SearchGet(APIView):
         return normalized_score
 
     def _keyword_score(self,max_n_keyword,n_keyword):
-        MAX_KEYWORD_SCORE = 10
+        MAX_KEYWORD_SCORE = 50
         if max_n_keyword == 0:
             return 0
         else:
