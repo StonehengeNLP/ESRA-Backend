@@ -267,11 +267,12 @@ class SearchGet(APIView):
         #score from popularity -> normailized in range [0,100]
         scores = [paper.popularity for paper in papers]
         papers_score = {}
-        for paper in papers:
-            papers_score[paper.paper_id] = self._normalize_score(paper.popularity,min(scores),max(scores),0,100)
+        temp_scores = []
+        for i,paper in enumerate(papers):
+            temp_scores.append([paper.paper_id,0,self._normalize_score(paper.popularity,min(scores),max(scores),0,100)])
 
         #score from keyword(s) included
-        for paper in papers:
+        for i,paper in enumerate(papers):
             n_keyword = 0
             for keyword in cleaned_response.keys():
                 if paper.paper_id in mapping_keyword_id[keyword]:
@@ -281,9 +282,14 @@ class SearchGet(APIView):
                         if paper.paper_id in mapping_keyword_id[semantic_keyword]:
                             n_keyword += 1
                             break
-            papers_score[paper.paper_id] += self._keyword_score(len(cleaned_response.keys()),n_keyword)
+            temp_scores[i][1] = self._keyword_score(len(cleaned_response.keys()),n_keyword)
+            # papers_score[paper.paper_id] = self._keyword_score(len(cleaned_response.keys()),n_keyword)
+
+        for score in temp_scores:
+            papers_score[score[0]] = (score[1],score[2])
+
         
-        sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: -score[1])).keys()]
+        sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (-score[1][0],-score[1][1]))).keys()]
         # papers = sorted(papers, key=lambda x: x.popularity, reverse=True)
         # papers = [paper.paper_id for paper in papers]
         return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
