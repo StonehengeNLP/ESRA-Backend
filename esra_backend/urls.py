@@ -1,7 +1,7 @@
 from django.urls import path,include
 from .views import (PaperGet, PaperList, PaperPost, 
                     AuthorPost, AffiliationPost, PaperAuthorAffilationPost,
-                    SearchGet, AutoComplete, GraphGet)
+                    SearchGet, AutoComplete, GraphGet, PaperD3Get)
 
 urlpatterns = [
 
@@ -17,6 +17,11 @@ urlpatterns = [
         'graph',
         GraphGet.as_view(),
         name='get_graph'
+    ),
+    path(
+        'graph_d3',
+        PaperD3Get.as_view(),
+        name='d3'
     ),
     path(
         'paper/get_paper',

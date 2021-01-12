@@ -1,6 +1,6 @@
 # from django.shortcuts import render
 # from django.http import HttpResponse
-import requests
+import requests, string
 import urllib.parse
 from rest_framework import permissions, serializers, status, generics
 from rest_framework.views import APIView
@@ -62,6 +62,53 @@ class GraphGet(APIView):
         data = {'nodes': nodes, 'links': links}
         return Response(data,status=status.HTTP_200_OK)
 
+class PaperD3Get(APIView):
+    """
+    API for retrieving data to visualize w/ D3 force graph
+    """
+    
+    graph_url = "http://35.247.162.211/graph"
+
+    def get(self, request, format=None):
+        paper_id = self.request.GET.get('paper_id')
+        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        payload = urllib.parse.urlencode({
+            "paper_title": paper_title,
+            "limit": self.request.GET.get('limit', 0)
+        })
+        # print(payload)
+        response = requests.get(self.graph_url,params=payload)
+        relations = response.json().get('graph', [])
+        
+        ent_id = 1
+        nodes = dict()
+        links = list()
+        
+        for relation in relations:
+            relation_name, ent_1, ent_2 = relation
+            ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
+            
+            if ent_1 not in nodes:
+                nodes[ent_1] = ent_id; ent_id += 1
+            if ent_2 not in nodes:
+                nodes[ent_2] = ent_id; ent_id += 1
+
+            links.append({
+                'source': nodes[ent_1],
+                'target': nodes[ent_2],
+                'label': relation_name,
+            })
+
+        node_list = []
+        for (ent, eid) in nodes.items():
+            ent_name, ent_label = ent
+            node_list.append({
+                'id': eid,
+                'name': ent_name,
+                'labels': ent_label
+            })
+        data = {'nodes': node_list, 'links': links}
+        return Response(data,status=status.HTTP_200_OK)
         
 class PaperGet(generics.RetrieveAPIView):
     """
@@ -103,12 +150,16 @@ class PaperList(generics.ListAPIView):
     
     def list(self, request, *args, **kwargs):
         papers = self.get_queryset()
+        capitalizer = lambda x: string.capwords(x)
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
             paper_titles = []
             abstracts = []
             for paper in response_data:
+                paper['conference'] = capitalizer(paper['conference'])
+                paper['authors'] = list(map(capitalizer, paper['authors']))
+                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
                 paper_titles.append(paper['paper_title'])
                 abstracts.append(paper['abstract'])
 
