@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
 from django.db.models import Q
+from rank_bm25 import BM25Okapi
 from .serializer import (PaperSerializer, AuthorSerializer, PaperListSerializer,
                          AffiliationSerializer, PaperAuthorAffiliationSerializer)
 
@@ -319,7 +320,6 @@ class SearchGet(APIView):
         sort_order = int(request.GET.get('sortOrder',0))
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
         response = requests.post(self.preprocess_url,json={"text": q})
-        # TODO: improve ranking algorithm
         keywords,cleaned_response = self._get_keys(response.json())
 
         if(filter_year_range == 'DEFAULT'):
@@ -348,15 +348,32 @@ class SearchGet(APIView):
         
         #sort_by
         #score from popularity -> normailized in range [0,100]
-        if(sort_by == 0):
+        if(sort_by == 0): #relevance
             for i,paper in enumerate(papers):
                 temp_scores[i][2] = paper.popularity
-        elif(sort_by == 1):
+        elif(sort_by == 1): #citation count
             for i,paper in enumerate(papers):
                 temp_scores[i][2] = paper.citation_count
-        elif(sort_by == 2):
+        elif(sort_by == 2): #publish date
             for i,paper in enumerate(papers):
                 temp_scores[i][2] = paper.publish_date
+        elif(sort_by == 3): #bm25
+
+            corpus_abstract = [paper.abstract.lower() for paper in papers]
+            corpus_title = [paper.paper_title.lower() for paper in papers]
+            
+            tokenized_corpus_abstract = [doc.split(" ") for doc in corpus_abstract]
+            tokenized_corpus_title = [doc.split(" ") for doc in corpus_title]
+
+            bm25_abstract = BM25Okapi(tokenized_corpus_abstract)
+            bm25_title = BM25Okapi(tokenized_corpus_title)
+            
+            doc_scores_abstract = bm25_abstract.get_scores(keywords)
+            doc_scores_title = bm25_title.get_scores(keywords)
+
+            for i in range(len(papers)):
+                temp_scores[i][2] = doc_scores_abstract[i] + doc_scores_title[i]
+
 
         #final_score
         for score in temp_scores:
@@ -368,5 +385,5 @@ class SearchGet(APIView):
         else:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (-score[1][0],score[1][1]))).keys()]
 
-        # print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
+        print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
         return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
