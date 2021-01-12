@@ -361,7 +361,7 @@ class SearchGet(APIView):
 
             corpus_abstract = [paper.abstract.lower() for paper in papers]
             corpus_title = [paper.paper_title.lower() for paper in papers]
-            
+
             tokenized_corpus_abstract = [doc.split(" ") for doc in corpus_abstract]
             tokenized_corpus_title = [doc.split(" ") for doc in corpus_title]
 
@@ -385,5 +385,5 @@ class SearchGet(APIView):
         else:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (-score[1][0],score[1][1]))).keys()]
 
-        print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
+        # print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
         return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
