@@ -262,6 +262,7 @@ class SearchGet(APIView):
             - 0 -> relevance
             - 1 -> citation count
             - 2 -> date
+            - 3 -> BM25
         'sortOrder': <int> sort order
             - 0 -> best first (most popular,citation count, newest)
             - 1 -> opposite to best first
