@@ -252,6 +252,20 @@ class PaperAuthorAffilationPost(generics.CreateAPIView):
 class SearchGet(APIView):
     """
     Simple Rest API view for retrieving search result
+
+    params = {
+        'q' : <str> keyword(s)
+        'lim': <int> limit of paper
+        'skip': <int> skip to start at
+        'sortBy': <int> sort algorithms
+            - 0 -> relevance
+            - 1 -> citation count
+            - 2 -> date
+        'sortOrder': <int> sort order
+            - 0 -> best first (most popular,citation count, newest)
+            - 1 -> opposite to best first
+    }
+
     """
 
     preprocess_url = "http://35.247.162.211/preprocess"
@@ -291,17 +305,6 @@ class SearchGet(APIView):
             papers += temp_papers
         return list(set(papers)),mapping_keyword_id
 
-    def _normalize_score(self,score,old_min,old_max,new_min,new_max):
-        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
-        return normalized_score
-
-    def _keyword_score(self,max_n_keyword,n_keyword):
-        MAX_KEYWORD_SCORE = 100
-        if max_n_keyword == 0:
-            return 0
-        else:
-            keyword_score = (n_keyword/max_n_keyword) * MAX_KEYWORD_SCORE
-            return keyword_score
 
     def get(self, request, format=None):
         """
@@ -310,17 +313,16 @@ class SearchGet(APIView):
         q = request.GET.get('q', '')
         limit = int(request.GET.get('lim',10))
         skip = int(request.GET.get('skip', 0))
+        sort_by = int(request.GET.get('sortBy',0))
+        sort_order = int(request.GET.get('sortOrder',0))
         response = requests.post(self.preprocess_url,json={"text": q})
         # TODO: improve ranking algorithm
         keywords,cleaned_response = self._get_keys(response.json())
         papers,mapping_keyword_id = self._get_papers(keywords)
         
-        #score from popularity -> normailized in range [0,100]
-        scores = [paper.popularity for paper in papers]
+
         papers_score = {}
         temp_scores = []
-        for i,paper in enumerate(papers):
-            temp_scores.append([paper.paper_id,0,self._normalize_score(paper.popularity,min(scores),max(scores),0,100)])
 
         #score from keyword(s) included
         for i,paper in enumerate(papers):
@@ -333,14 +335,29 @@ class SearchGet(APIView):
                         if paper.paper_id in mapping_keyword_id[semantic_keyword]:
                             n_keyword += 1
                             break
-            temp_scores[i][1] = self._keyword_score(len(cleaned_response.keys()),n_keyword)
-            # papers_score[paper.paper_id] = self._keyword_score(len(cleaned_response.keys()),n_keyword)
+            temp_scores.append([paper.paper_id,n_keyword,0])
+        
+        #sort_by
+        #score from popularity -> normailized in range [0,100]
+        if(sort_by == 0):
+            for i,paper in enumerate(papers):
+                temp_scores[i][2] = paper.popularity
+        elif(sort_by == 1):
+            for i,paper in enumerate(papers):
+                temp_scores[i][2] = paper.citation_count
+        elif(sort_by == 2):
+            for i,paper in enumerate(papers):
+                temp_scores[i][2] = paper.publish_date
 
+        #final_score
         for score in temp_scores:
             papers_score[score[0]] = (score[1],score[2])
-
         
-        sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (-score[1][0],-score[1][1]))).keys()]
-        # papers = sorted(papers, key=lambda x: x.popularity, reverse=True)
-        # papers = [paper.paper_id for paper in papers]
+        #sort keyword score first, then other score
+        if(sort_order == 0):
+            sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1]).keys()]
+        else:
+            sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (-score[1][0],score[1][1]))).keys()]
+
+        print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
         return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
