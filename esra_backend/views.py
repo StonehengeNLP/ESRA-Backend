@@ -298,7 +298,6 @@ class SearchGet(APIView):
                     Q(abstract__iregex=regx) | Q(paper_title__iregex=regx)
                 )
             else:
-                print('hi')
                 temp_papers = Paper.objects.filter(
                     Q(abstract__iregex=regx) | Q(paper_title__iregex=regx),
                     Q(publish_date__year__gte=int(year_range[0])),
@@ -328,7 +327,6 @@ class SearchGet(APIView):
         else: 
             from_year = int(filter_year_range[:4])
             to_year = int(filter_year_range[5:])
-            print((from_year,to_year))
             papers,mapping_keyword_id = self._get_papers(keywords,(from_year,to_year))
         
 
