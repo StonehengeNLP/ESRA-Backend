@@ -264,6 +264,8 @@ class SearchGet(APIView):
         'sortOrder': <int> sort order
             - 0 -> best first (most popular,citation count, newest)
             - 1 -> opposite to best first
+        'filterYear': <str> format start-end ex: '2019-2020'
+                        default: not fill it.
     }
 
     """
@@ -285,22 +287,23 @@ class SearchGet(APIView):
         return keywords,res
 
 
-    def _get_papers(self, keywords):
+    def _get_papers(self, keywords, year_range):
         mapping_keyword_id = {}
         papers = []
         for keyword in keywords:
-
             # regx
             regx = r'\b{}(s|es){{0,1}}\b'.format(keyword)
-            temp_papers = Paper.objects.filter(
-                Q(abstract__iregex=regx) | Q(paper_title__iregex=regx)
-            )
-
-            # # contains
-            # temp_papers = Paper.objects.filter(
-            #     Q(abstract__icontains=keyword) | Q(paper_title__icontains=keyword)
-            # )
-
+            if(year_range == 'DEFAULT'):
+                temp_papers = Paper.objects.filter(
+                    Q(abstract__iregex=regx) | Q(paper_title__iregex=regx)
+                )
+            else:
+                print('hi')
+                temp_papers = Paper.objects.filter(
+                    Q(abstract__iregex=regx) | Q(paper_title__iregex=regx),
+                    Q(publish_date__year__gte=int(year_range[0])),
+                    Q(publish_date__year__lte=int(year_range[1]))
+                )
             mapping_keyword_id[keyword] = [paper.paper_id for paper in temp_papers]
             papers += temp_papers
         return list(set(papers)),mapping_keyword_id
@@ -315,10 +318,18 @@ class SearchGet(APIView):
         skip = int(request.GET.get('skip', 0))
         sort_by = int(request.GET.get('sortBy',0))
         sort_order = int(request.GET.get('sortOrder',0))
+        filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
         response = requests.post(self.preprocess_url,json={"text": q})
         # TODO: improve ranking algorithm
         keywords,cleaned_response = self._get_keys(response.json())
-        papers,mapping_keyword_id = self._get_papers(keywords)
+
+        if(filter_year_range == 'DEFAULT'):
+            papers,mapping_keyword_id = self._get_papers(keywords,'DEFAULT')
+        else: 
+            from_year = int(filter_year_range[:4])
+            to_year = int(filter_year_range[5:])
+            print((from_year,to_year))
+            papers,mapping_keyword_id = self._get_papers(keywords,(from_year,to_year))
         
 
         papers_score = {}
@@ -359,5 +370,5 @@ class SearchGet(APIView):
         else:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (-score[1][0],score[1][1]))).keys()]
 
-        print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
+        # print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
         return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
