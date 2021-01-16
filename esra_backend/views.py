@@ -454,6 +454,15 @@ class FactGet(APIView):
         response = requests.get(self.url,params=payload)
         facts = response.json().get('facts', [])
 
+        fact_list = facts
+        for fact in fact_list:
+            paper_set = set()
+            for i,paper_id in enumerate(fact['papers']):
+                if paper_id not in paper_set:
+                    paper_set.add(paper_id)
+                    paper_title = Paper.objects.get(pk=paper_id).paper_title
+                    fact['papers'][i] = {'id':paper_id, 'title':paper_title}
+
         node_dict = dict()
         links = []
         ent_id = 1
@@ -494,5 +503,5 @@ class FactGet(APIView):
                 'name': ent_name,
                 'labels': ent_label
             })
-        data = {'facts': facts, 'nodes':node_list, 'links':links}
+        data = {'facts': fact_list, 'nodes':node_list, 'links':links}
         return Response(data,status=status.HTTP_200_OK)
