@@ -110,7 +110,57 @@ class PaperD3Get(APIView):
             })
         data = {'nodes': node_list, 'links': links}
         return Response(data,status=status.HTTP_200_OK)
+
+class Key_PaperD3Get(APIView):
+    """
+    API for retrieving graph containing path between keyword node(s) to paper
+    """
+
+    graph_url = "http://35.247.162.211/kwGraph"
+
+    def get(self, request, format=None):
+        keys = self.request.GET.get('keywords')
+        paper_id = self.request.GET.get('paper_id')
+        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        payload = urllib.parse.urlencode({
+            "keys": keys,
+            "paper_title": paper_title,
+            "limit": self.request.GET.get('limit', 0)
+        })
         
+        response = requests.get(self.graph_url,params=payload)
+        relations = response.json().get('graph', [])
+        
+        ent_id = 1
+        nodes = dict()
+        links = list()
+        
+        for relation in relations:
+            relation_name, ent_1, ent_2 = relation
+            ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
+            
+            if ent_1 not in nodes:
+                nodes[ent_1] = ent_id; ent_id += 1
+            if ent_2 not in nodes:
+                nodes[ent_2] = ent_id; ent_id += 1
+
+            links.append({
+                'source': nodes[ent_1],
+                'target': nodes[ent_2],
+                'label': relation_name,
+            })
+
+        node_list = []
+        for (ent, eid) in nodes.items():
+            ent_name, ent_label = ent
+            node_list.append({
+                'id': eid,
+                'name': ent_name,
+                'labels': ent_label
+            })
+        data = {'nodes': node_list, 'links': links}
+        return Response(data,status=status.HTTP_200_OK)
+
 class PaperGet(generics.RetrieveAPIView):
     """
     GET Rest API view for requesting individual paper information.
