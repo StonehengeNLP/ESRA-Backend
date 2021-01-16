@@ -457,7 +457,7 @@ class FactGet(APIView):
         node_dict = dict()
         links = []
         ent_id = 1
-        get_label = lambda x: x[0] if x[0]=='BaseEntity' else x[1]
+        get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1]
         get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
         n_name = facts[0]['key']
         n_label = get_label(facts[0]['n_labels'])
