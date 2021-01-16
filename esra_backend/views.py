@@ -1,5 +1,6 @@
 # from django.shortcuts import render
 # from django.http import HttpResponse
+from numpy.lib.utils import source
 import requests, string
 import urllib.parse
 from rest_framework import permissions, serializers, status, generics
@@ -127,7 +128,7 @@ class Key_PaperD3Get(APIView):
             "paper_title": paper_title,
             "limit": self.request.GET.get('limit', 0)
         })
-        
+
         response = requests.get(self.graph_url,params=payload)
         relations = response.json().get('graph', [])
         
@@ -438,3 +439,59 @@ class SearchGet(APIView):
 
         # print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
         return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
+
+class FactGet(APIView):
+    """
+    API for retrieving fact list
+    """
+
+    url = "something..."
+
+    def get(self, request, format=None):
+        q = request.GET.get('q')
+        # TODO: check q value
+        payload = urllib.parse.urlencode({"q": q})
+        response = requests.get(self.graph_url,params=payload)
+        facts = response.json().get('facts', [])
+
+        node_dict = dict()
+        links = []
+        ent_id = 1
+        get_label = lambda x: x[0] if x[0]=='BaseEntity' else x[1]
+        get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
+        n_name = facts[0]['key']
+        n_label = get_label(facts[0]['n_label'])
+        n = (n_name, n_label,)
+        node_dict[n] = ent_id
+        n_id = 1
+        ent_id += 1
+        keys = ['type', 'isSubject', 'name', 'm_label']
+        for fact in facts:
+            relation_type, isSubject, m_name, m_label = [fact.get(k) for k in keys]
+            # reassure that isSubject is a boolean type var 
+            if type(isSubject) == string:
+                isSubject = True if isSubject=='true' else False
+            m = (m_name, m_label,)
+            if m not in node_dict:
+                node_dict[m] = ent_id
+                m_id = ent_id
+                ent_id += 1
+            else:
+                m_id = node_dict[m]
+            source, target = get_source_target(n_id,m_id,isSubject)
+            links.append({
+                'source': source,
+                'target': target,
+                'label': relation_type
+            })
+        
+        node_list = []
+        for (ent, eid) in node_dict.items():
+            ent_name, ent_label = ent
+            node_list.append({
+                'id': eid,
+                'name': ent_name,
+                'labels': ent_label
+            })
+        data = {'facts': facts, 'nodes':node_list, 'links':links}
+        return Response(data,status=status.HTTP_200_OK)
