@@ -445,13 +445,13 @@ class FactGet(APIView):
     API for retrieving fact list
     """
 
-    url = "something..."
+    url = "http://something/facts"
 
     def get(self, request, format=None):
         q = request.GET.get('q')
         # TODO: check q value
         payload = urllib.parse.urlencode({"q": q})
-        response = requests.get(self.graph_url,params=payload)
+        response = requests.get(self.url,params=payload)
         facts = response.json().get('facts', [])
 
         node_dict = dict()
@@ -460,17 +460,18 @@ class FactGet(APIView):
         get_label = lambda x: x[0] if x[0]=='BaseEntity' else x[1]
         get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
         n_name = facts[0]['key']
-        n_label = get_label(facts[0]['n_label'])
+        n_label = get_label(facts[0]['n_labels'])
         n = (n_name, n_label,)
         node_dict[n] = ent_id
         n_id = 1
         ent_id += 1
-        keys = ['type', 'isSubject', 'name', 'm_label']
+        keys = ['type', 'isSubject', 'name', 'm_labels']
         for fact in facts:
             relation_type, isSubject, m_name, m_label = [fact.get(k) for k in keys]
             # reassure that isSubject is a boolean type var 
             if type(isSubject) == string:
                 isSubject = True if isSubject=='true' else False
+            m_label = get_label(m_label)
             m = (m_name, m_label,)
             if m not in node_dict:
                 node_dict[m] = ent_id
