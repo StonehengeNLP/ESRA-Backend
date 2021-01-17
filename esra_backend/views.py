@@ -11,6 +11,7 @@ from django.db.models import Q
 from rank_bm25 import BM25Okapi
 from .serializer import (PaperSerializer, AuthorSerializer, PaperListSerializer,
                          AffiliationSerializer, PaperAuthorAffiliationSerializer)
+from time import sleep
 
 
 class AutoComplete(APIView):
@@ -74,6 +75,12 @@ class PaperD3Get(APIView):
     def get(self, request, format=None):
         paper_id = self.request.GET.get('paper_id')
         paper_title = Paper.objects.get(pk=paper_id).paper_title
+        authors = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
+                               .values_list('author__author_name', flat=True)
+        authors = list(dict.fromkeys(authors))
+        # affiliations = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
+        #                        .values_list('affiliation__affiliation_name', flat=True)
+        # affiliations = list(dict.fromkeys(affiliations))
         payload = urllib.parse.urlencode({
             "paper_title": paper_title,
             "limit": self.request.GET.get('limit', 0)
@@ -85,21 +92,56 @@ class PaperD3Get(APIView):
         ent_id = 1
         nodes = dict()
         links = list()
-        
+        paper_end_id = -1
+        found_paper = False
         for relation in relations:
             relation_name, ent_1, ent_2 = relation
             ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
             
             if ent_1 not in nodes:
-                nodes[ent_1] = ent_id; ent_id += 1
+                nodes[ent_1] = ent_id
+                if not found_paper and ent_1[1] == 'Paper':
+                    paper_end_id = ent_id
+                ent_id += 1
             if ent_2 not in nodes:
-                nodes[ent_2] = ent_id; ent_id += 1
+                nodes[ent_2] = ent_id
+                if not found_paper and ent_2[1] == 'Paper':
+                    paper_end_id = ent_id
+                ent_id += 1
 
             links.append({
                 'source': nodes[ent_1],
                 'target': nodes[ent_2],
                 'label': relation_name,
             })
+
+        for author in authors:
+            author_ent = (author, 'Author',)
+            if author_ent not in nodes:
+                nodes[author_ent] = ent_id
+                author_node_id = ent_id
+                ent_id += 1
+            else:
+                author_node_id = nodes[author_ent]
+            links.append({
+                'source': author_node_id, 
+                'target': paper_end_id,
+                'label': 'author_of'
+            })
+        
+        # for affiliation in affiliations:
+        #     affiliation_ent = (affiliation, 'affiliation',)
+        #     if affiliation_ent not in nodes:
+        #         nodes[affiliation_ent] = ent_id
+        #         affiliation_node_id = ent_id
+        #         ent_id += 1
+        #     else:
+        #         affiliation_node_id = nodes[affiliation_ent]
+        #     links.append({
+        #         'source': affiliation_node_id, 
+        #         'target': paper_end_id,
+        #         'label': 'affiliation_of'
+        #     })
 
         node_list = []
         for (ent, eid) in nodes.items():
@@ -117,7 +159,7 @@ class Key_PaperD3Get(APIView):
     API for retrieving graph containing path between keyword node(s) to paper
     """
 
-    graph_url = "http://localhost:80/kwGraph"
+    graph_url = "http://35.247.162.211/kwGraph"
 
     def get(self, request, format=None):
         keys = self.request.GET.get('keywords')
