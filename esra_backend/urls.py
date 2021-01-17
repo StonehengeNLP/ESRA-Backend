@@ -2,7 +2,7 @@ from django.urls import path,include
 from .views import (PaperGet, PaperList, PaperPost, 
                     AuthorPost, AffiliationPost, PaperAuthorAffilationPost,
                     SearchGet, AutoComplete, GraphGet, PaperD3Get, FactGet,
-                    Key_PaperD3Get, )
+                    Key_PaperD3Get, CitePaperPost)
 
 urlpatterns = [
 
@@ -68,5 +68,10 @@ urlpatterns = [
         'kwGraph',
         Key_PaperD3Get.as_view(),
         name='kwGraph_get'
+    ),
+    path(
+        'citePaper',
+        CitePaperPost.as_view(),
+        name='cite_paper_post'
     ),
 ]

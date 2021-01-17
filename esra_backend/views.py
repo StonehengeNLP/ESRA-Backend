@@ -245,7 +245,7 @@ class PaperList(generics.ListAPIView):
         if paper_ids:
             paper_ids = [int(i) for i in paper_ids.split(',')]
             return self._get_paper_by_ids(paper_ids)
-    
+
     def list(self, request, *args, **kwargs):
         papers = self.get_queryset()
         capitalizer = lambda x: string.capwords(x)
@@ -279,6 +279,49 @@ class PaperList(generics.ListAPIView):
             print(e)
             return Response(status=status.HTTP_400_BAD_REQUEST)
 
+class CitePaperPost(APIView):
+    """
+    Post REST Api for retrieving ref/cite paper list
+    """
+
+    def _get_queryset(self, paper_ids, order_by_field, ordering):
+        if ordering==0:
+            return (
+                Paper.objects.filter(paper_id__in=paper_ids).order_by(f"-{order_by_field}")
+            )
+        return (
+            Paper.objects.filter(paper_id__in=paper_ids).order_by(order_by_field)
+        ) 
+
+    def get_field_name(self, fid):
+        if fid==0:
+            return "publish_date"
+        elif fid==1:
+            return 'citation_count'
+        return 'paper_id'
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        paper_ids = data['paper_ids']
+        skip = data['skip']
+        order_by_field = self.get_field_name(data['field'])
+        ordering = data['ordering'] # 0 for desc 1 for asc
+        papers = self._get_queryset(paper_ids, order_by_field, ordering)[skip:skip+10]
+
+        capitalizer = lambda x: string.capwords(x)
+        try:
+            serializer = PaperListSerializer(instance=papers,many=True)
+            response_data = serializer.data
+            for paper in response_data:
+                paper['conference'] = capitalizer(paper['conference'])
+                paper['authors'] = list(map(capitalizer, paper['authors']))
+                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        
 class PaperPost(generics.CreateAPIView):
     """
     Post Rest API for adding new paper
