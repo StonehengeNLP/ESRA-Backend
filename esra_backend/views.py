@@ -117,7 +117,7 @@ class Key_PaperD3Get(APIView):
     API for retrieving graph containing path between keyword node(s) to paper
     """
 
-    graph_url = "http://35.247.162.211/kwGraph"
+    graph_url = "http://localhost:80/kwGraph"
 
     def get(self, request, format=None):
         keys = self.request.GET.get('keywords')
@@ -130,26 +130,30 @@ class Key_PaperD3Get(APIView):
         })
 
         response = requests.get(self.graph_url,params=payload)
-        relations = response.json().get('graph', [])
+        paths = response.json().get('graph', [])
         
+        get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1] 
         ent_id = 1
         nodes = dict()
         links = list()
-        
-        for relation in relations:
-            relation_name, ent_1, ent_2 = relation
-            ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
-            
-            if ent_1 not in nodes:
-                nodes[ent_1] = ent_id; ent_id += 1
-            if ent_2 not in nodes:
-                nodes[ent_2] = ent_id; ent_id += 1
-
-            links.append({
-                'source': nodes[ent_1],
-                'target': nodes[ent_2],
-                'label': relation_name,
-            })
+        seen_relation = set()
+        for path in paths:
+            for relation in path:
+                relation_name, ent_1, ent_2 = relation
+                ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
+                
+                if ent_1 not in nodes:
+                    nodes[ent_1] = ent_id; ent_id += 1
+                if ent_2 not in nodes:
+                    nodes[ent_2] = ent_id; ent_id += 1
+                r = (nodes[ent_1], nodes[ent_2], relation_name)
+                if r not in seen_relation:
+                    links.append({
+                        'source': nodes[ent_1],
+                        'target': nodes[ent_2],
+                        'label': relation_name,
+                    })
+                    seen_relation.add(r)
 
         node_list = []
         for (ent, eid) in nodes.items():
@@ -445,7 +449,7 @@ class FactGet(APIView):
     API for retrieving fact list
     """
 
-    url = "http://something/facts"
+    url = "http://35.247.162.211/facts"
 
     def get(self, request, format=None):
         q = request.GET.get('q')

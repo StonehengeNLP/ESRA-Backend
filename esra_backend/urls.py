@@ -1,7 +1,8 @@
 from django.urls import path,include
 from .views import (PaperGet, PaperList, PaperPost, 
                     AuthorPost, AffiliationPost, PaperAuthorAffilationPost,
-                    SearchGet, AutoComplete, GraphGet, PaperD3Get, FactGet)
+                    SearchGet, AutoComplete, GraphGet, PaperD3Get, FactGet,
+                    Key_PaperD3Get, )
 
 urlpatterns = [
 
@@ -63,5 +64,9 @@ urlpatterns = [
         FactGet.as_view(),
         name='facts_get'
     ),
-    
+    path(
+        'kwGraph',
+        Key_PaperD3Get.as_view(),
+        name='kwGraph_get'
+    ),
 ]
