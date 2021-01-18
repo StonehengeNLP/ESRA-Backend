@@ -526,8 +526,25 @@ class SearchGet(APIView):
         else:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers_score.items(), key=lambda score: (-score[1][0],score[1][1]))).keys()]
 
+        result_papers = sorted_papers[skip:skip+limit]
+        #keyword(s) of each paper
+        papers_keyword = {}
+        for paper in result_papers:
+            if paper not in papers_keyword.keys():
+                papers_keyword[paper] = []
+            for keyword in mapping_keyword_id.keys():
+                if paper in mapping_keyword_id[keyword]:
+                    papers_keyword[paper].append(keyword)
+        result_keyword = [papers_keyword[paper] for paper in result_papers]
+        
+        
+        result = {
+            'paper_id': result_papers,
+            'paper_keywords': result_keyword
+        }
+
         # print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
-        return Response(sorted_papers[skip:skip+limit], status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_200_OK)
 
 class FactGet(APIView):
     """
