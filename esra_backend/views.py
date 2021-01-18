@@ -284,14 +284,23 @@ class CitePaperPost(APIView):
     Post REST Api for retrieving ref/cite paper list
     """
 
-    def _get_queryset(self, paper_ids, order_by_field, ordering):
-        if ordering==0:
+    def _get_queryset(self, paper_id, query_type, order_by_field, ordering):
+        if query_type == 0: #cite_to
+            if ordering == 0:
+                return (
+                    Paper.objects.get(pk=paper_id).cite_to.order_by(f"-{order_by_field}")
+                )
             return (
-                Paper.objects.filter(paper_id__in=paper_ids).order_by(f"-{order_by_field}")
+                Paper.objects.get(pk=paper_id).cite_to.order_by(order_by_field)
             )
-        return (
-            Paper.objects.filter(paper_id__in=paper_ids).order_by(order_by_field)
-        ) 
+        elif query_type == 1: #cited_by
+            if ordering == 0:
+                return (
+                    Paper.objects.filter(cite_to=paper_id).order_by(f"-{order_by_field}")
+                )
+            return (
+                Paper.objects.filter(cite_to=paper_id).order_by(f"-{order_by_field}")
+            )
 
     def get_field_name(self, fid):
         if fid==0:
@@ -302,11 +311,14 @@ class CitePaperPost(APIView):
 
     def post(self, request, *args, **kwargs):
         data = request.data
-        paper_ids = data['paper_ids']
+        paper_id = data['paper_id']
+        query_type = data['type'] # 0 for cite_to 1 for cited by
         skip = data['skip']
         order_by_field = self.get_field_name(data['field'])
         ordering = data['ordering'] # 0 for desc 1 for asc
-        papers = self._get_queryset(paper_ids, order_by_field, ordering)[skip:skip+10]
+
+
+        papers = self._get_queryset(paper_id, query_type, order_by_field, ordering)[skip:skip+10]
 
         capitalizer = lambda x: string.capwords(x)
         try:
