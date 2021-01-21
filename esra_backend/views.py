@@ -88,7 +88,11 @@ class PaperD3Get(APIView):
         # print(payload)
         response = requests.get(self.graph_url,params=payload)
         relations = response.json().get('graph', [])
-        
+        if relations==[]:
+            data = {'nodes': [], 'links': []}
+            return Response(data,status=status.HTTP_200_OK)
+
+
         ent_id = 1
         nodes = dict()
         links = list()
@@ -258,6 +262,9 @@ class PaperList(generics.ListAPIView):
                 paper['conference'] = capitalizer(paper['conference'])
                 paper['authors'] = list(map(capitalizer, paper['authors']))
                 paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+                if "" in paper['affiliations']:
+                    paper['affiliations'].remove("")
                 paper_titles.append(paper['paper_title'])
                 abstracts.append(paper['abstract'])
 
@@ -332,7 +339,7 @@ class CitePaperPost(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
             print(e)
-            return Response(status=status.HTTP_400_BAD_REQUEST)
+            return Response([], status=status.HTTP_400_BAD_REQUEST)
         
 class PaperPost(generics.CreateAPIView):
     """
@@ -586,26 +593,32 @@ class FactGet(APIView):
         ent_id = 1
         get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1]
         get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
-        n_name = facts[0]['key']
-        n_label = get_label(facts[0]['n_labels'])
-        n = (n_name, n_label,)
-        node_dict[n] = ent_id
-        n_id = 1
-        ent_id += 1
-        keys = ['type', 'isSubject', 'name', 'm_labels']
+        # n_name = facts[0]['key']
+        # n_label = get_label(facts[0]['n_labels'])
+        # n = (n_name, n_label,)
+        # node_dict[n] = ent_id
+        # n_id = 1
+        # ent_id += 1
+        keys = ['key', 'n_labels', 'type', 'isSubject', 'name', 'm_labels']
         for fact in facts:
-            relation_type, isSubject, m_name, m_label = [fact.get(k) for k in keys]
+            n_name, n_label, relation_type, isSubject, m_name, m_label = [fact.get(k) for k in keys]
             # reassure that isSubject is a boolean type var 
             if type(isSubject) == string:
                 isSubject = True if isSubject=='true' else False
+            n_label = get_label(n_label)
+            n = (n_name, n_label,)
             m_label = get_label(m_label)
             m = (m_name, m_label,)
+            if n not in node_dict:
+                node_dict[n] = ent_id
+                n_id = ent_id
+                ent_id += 1
             if m not in node_dict:
                 node_dict[m] = ent_id
                 m_id = ent_id
                 ent_id += 1
-            else:
-                m_id = node_dict[m]
+            n_id = node_dict[n]
+            m_id = node_dict[m]
             source, target = get_source_target(n_id,m_id,isSubject)
             links.append({
                 'source': source,
