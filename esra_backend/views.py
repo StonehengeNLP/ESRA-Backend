@@ -83,14 +83,10 @@ class PaperD3Get(APIView):
         authors = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
                                .values_list('author__author_name', flat=True)
         authors = list(dict.fromkeys(authors))
-        # affiliations = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
-        #                        .values_list('affiliation__affiliation_name', flat=True)
-        # affiliations = list(dict.fromkeys(affiliations))
         payload = urllib.parse.urlencode({
             "paper_title": paper_title,
             "limit": self.request.GET.get('limit', 0)
         })
-        # print(payload)
         response = requests.get(self.graph_url,params=payload)
         relations = response.json().get('graph', [])
         if relations==[]:
@@ -101,6 +97,7 @@ class PaperD3Get(APIView):
         ent_id = 1
         nodes = dict()
         links = list()
+        link_nums = dict()
         paper_end_id = -1
         found_paper = False
         for relation in relations:
@@ -117,13 +114,24 @@ class PaperD3Get(APIView):
                 if not found_paper and ent_2[1] == 'Paper':
                     paper_end_id = ent_id
                 ent_id += 1
+            
+            source_id = nodes[ent_1]
+            target_id = nodes[ent_2]
+
+            # store link number
+            link = (source_id, target_id)
+            if link not in link_nums:
+                link_nums[link] = 1
+            else:
+                link_nums[link] += 1
 
             links.append({
-                'source': nodes[ent_1],
-                'target': nodes[ent_2],
+                'source': source_id,
+                'target': target_id,
                 'label': relation_name,
+                'linkNum': link_nums[link]
             })
-
+        
         for author in authors:
             author_ent = (author, 'Author',)
             if author_ent not in nodes:
@@ -135,22 +143,9 @@ class PaperD3Get(APIView):
             links.append({
                 'source': author_node_id, 
                 'target': paper_end_id,
-                'label': 'author_of'
+                'label': 'author_of',
+                'linkNum': 1
             })
-        
-        # for affiliation in affiliations:
-        #     affiliation_ent = (affiliation, 'affiliation',)
-        #     if affiliation_ent not in nodes:
-        #         nodes[affiliation_ent] = ent_id
-        #         affiliation_node_id = ent_id
-        #         ent_id += 1
-        #     else:
-        #         affiliation_node_id = nodes[affiliation_ent]
-        #     links.append({
-        #         'source': affiliation_node_id, 
-        #         'target': paper_end_id,
-        #         'label': 'affiliation_of'
-        #     })
 
         node_list = []
         for (ent, eid) in nodes.items():
@@ -187,6 +182,7 @@ class Key_PaperD3Get(APIView):
         ent_id = 1
         nodes = dict()
         links = list()
+        link_nums = dict()
         seen_relation = set()
         for path in paths:
             for relation in path:
@@ -197,12 +193,22 @@ class Key_PaperD3Get(APIView):
                     nodes[ent_1] = ent_id; ent_id += 1
                 if ent_2 not in nodes:
                     nodes[ent_2] = ent_id; ent_id += 1
-                r = (nodes[ent_1], nodes[ent_2], relation_name)
+                
+                source_id = nodes[ent_1]
+                target_id = nodes[ent_2]
+
+                r = (source_id, target_id, relation_name)
                 if r not in seen_relation:
+                    link = (source_id, target_id)
+                    if link not in link_nums:
+                        link_nums[link] = 1
+                    else:
+                        link_nums[link] += 1
                     links.append({
                         'source': nodes[ent_1],
                         'target': nodes[ent_2],
                         'label': relation_name,
+                        'linkNum': link_nums[link],
                     })
                     seen_relation.add(r)
 
