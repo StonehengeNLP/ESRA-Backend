@@ -17,7 +17,7 @@ from django.conf import settings
 import pickle
 from sentence_transformers import SentenceTransformer
 import scipy
-
+from .data import embedding_vector
 
 class AutoComplete(APIView):
     """
@@ -478,8 +478,8 @@ class SearchGet(APIView):
         W_TITLE = 1
         W_ABSTRACT = 1
 
-        with open(os.path.join(settings.BASE_DIR, 'embedding.pickle'),'rb') as f:
-            embedding_vector = pickle.load(f)
+        # with open(os.path.join(settings.BASE_DIR, 'embedding.pickle'),'rb') as f:
+        #     embedding_vector = pickle.load(f)
         model = SentenceTransformer('roberta-large-nli-mean-tokens',device='cpu')
 
         title_em = []

@@ -110,8 +110,9 @@ media/
 #my db file
 test
 
-# csv files
+# other files
 *.csv
+*pickle
 
 # Ignore Django Migrations in Development if you are working on team
 
