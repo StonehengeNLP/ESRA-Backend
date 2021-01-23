@@ -12,6 +12,11 @@ from rank_bm25 import BM25Okapi
 from .serializer import (PaperSerializer, AuthorSerializer, PaperListSerializer,
                          AffiliationSerializer, PaperAuthorAffiliationSerializer)
 from time import sleep
+import os
+from django.conf import settings
+import pickle
+from sentence_transformers import SentenceTransformer
+import scipy
 
 
 class AutoComplete(APIView):
@@ -468,6 +473,43 @@ class SearchGet(APIView):
             papers += temp_papers
         return list(set(papers)),mapping_keyword_id
 
+    def _get_em_scores(self, papers, keywords):
+        # initial for embbeding vector
+        W_TITLE = 1
+        W_ABSTRACT = 1
+
+        with open(os.path.join(settings.BASE_DIR, 'embedding.pickle'),'rb') as f:
+            embedding_vector = pickle.load(f)
+        model = SentenceTransformer('roberta-large-nli-mean-tokens',device='cpu')
+
+        title_em = []
+        abstract_em = []
+        for paper in papers:
+            title_em.append(embedding_vector[paper.paper_title]['title_em'])
+            abstract_em.append(embedding_vector[paper.paper_title]['abstract_em'])
+
+        keywords = tuple(keywords)
+        keywords_em = model.encode(keywords)
+
+        scores = {}
+        for keyword,keyword_em in zip(keywords,keywords_em):
+            keyword_title_distance = scipy.spatial.distance.cdist([keyword_em], title_em, 'cosine')[0]
+            keyword_abstract_distance = scipy.spatial.distance.cdist([keyword_em], abstract_em, 'cosine')[0]
+
+            for i,paper in enumerate(papers):
+                if paper.paper_id not in scores:
+                    scores[paper.paper_id] = (W_TITLE * keyword_title_distance[i]) + (W_ABSTRACT * keyword_abstract_distance[i])
+
+        return scores
+
+    def _normalize_score(self,score,old_min,old_max,new_min,new_max):
+        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
+        return normalized_score
+
+    # def _keyword_score(self,max_n_keyword,n_keyword):
+    #     MAX_KEYWORD_SCORE = 10
+    #     keyword_score = (n_keyword/max_n_keyword) * 40
+    #     return keyword_score
 
     def get(self, request, format=None):
         """
@@ -481,6 +523,7 @@ class SearchGet(APIView):
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
         response = requests.post(self.preprocess_url,json={"text": q})
         keywords,cleaned_response = self._get_keys(response.json())
+
 
         if(filter_year_range == 'DEFAULT'):
             papers,mapping_keyword_id = self._get_papers(keywords,'DEFAULT')
@@ -505,7 +548,7 @@ class SearchGet(APIView):
                             n_keyword += 1
                             break
             temp_scores.append([paper.paper_id,n_keyword,0])
-        
+
         #sort_by
         #score from popularity -> normailized in range [0,100]
         if(sort_by == 0): #relevance
@@ -517,22 +560,34 @@ class SearchGet(APIView):
         elif(sort_by == 2): #publish date
             for i,paper in enumerate(papers):
                 temp_scores[i][2] = paper.publish_date
-        elif(sort_by == 3): #bm25
+        elif(sort_by == 3): # embedding vector
+            W_EM = 1
+            W_POP = 1
+            scores = self._get_em_scores(papers,keywords)
 
-            corpus_abstract = [paper.abstract.lower() for paper in papers]
-            corpus_title = [paper.paper_title.lower() for paper in papers]
-
-            tokenized_corpus_abstract = [doc.split(" ") for doc in corpus_abstract]
-            tokenized_corpus_title = [doc.split(" ") for doc in corpus_title]
-
-            bm25_abstract = BM25Okapi(tokenized_corpus_abstract)
-            bm25_title = BM25Okapi(tokenized_corpus_title)
+            l_scores = list(scores.values())
+            l_popularity = [paper.popularity for paper in papers]
             
-            doc_scores_abstract = bm25_abstract.get_scores(keywords)
-            doc_scores_title = bm25_title.get_scores(keywords)
+            for i,paper in enumerate(papers):
+                normalized_score = self._normalize_score(scores[paper.paper_id],min(l_scores),max(l_scores),0,1)
+                normalized_pop_score = self._normalize_score(paper.popularity,min(l_popularity),max(l_popularity),0,1)
+                temp_scores[i][1] = (W_EM * normalized_score) + (W_POP * normalized_pop_score) #ignore n_keywords
 
-            for i in range(len(papers)):
-                temp_scores[i][2] = doc_scores_abstract[i] + doc_scores_title[i]
+        # #bm25
+        #     corpus_abstract = [paper.abstract.lower() for paper in papers]
+        #     corpus_title = [paper.paper_title.lower() for paper in papers]
+
+        #     tokenized_corpus_abstract = [doc.split(" ") for doc in corpus_abstract]
+        #     tokenized_corpus_title = [doc.split(" ") for doc in corpus_title]
+
+        #     bm25_abstract = BM25Okapi(tokenized_corpus_abstract)
+        #     bm25_title = BM25Okapi(tokenized_corpus_title)
+            
+        #     doc_scores_abstract = bm25_abstract.get_scores(keywords)
+        #     doc_scores_title = bm25_title.get_scores(keywords)
+
+        #     for i in range(len(papers)):
+        #         temp_scores[i][2] = doc_scores_abstract[i] + doc_scores_title[i]
 
 
         #final_score
