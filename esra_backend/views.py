@@ -527,8 +527,10 @@ class SearchGet(APIView):
         sort_by = int(request.GET.get('sortBy',0))
         sort_order = int(request.GET.get('sortOrder',0))
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
+        DEBUG = int(request.GET.get('debug',0)) # for debug
         response = requests.post(self.preprocess_url,json={"text": q})
         keywords,cleaned_response = self._get_keys(response.json())
+        
 
 
         if(filter_year_range == 'DEFAULT'):
@@ -538,6 +540,11 @@ class SearchGet(APIView):
             to_year = int(filter_year_range[5:])
             papers,mapping_keyword_id = self._get_papers(keywords,(from_year,to_year))
         
+        if DEBUG==1:
+            papers_id_title = {}
+            for paper in papers:
+                if paper.paper_id not in papers_id_title:
+                    papers_id_title[paper.paper_id] = paper.paper_title
 
         papers_score = {}
         temp_scores = []
@@ -617,11 +624,21 @@ class SearchGet(APIView):
                     papers_keyword[paper].append(keyword)
         result_keyword = [papers_keyword[paper] for paper in result_papers]
         
-        
         result = {
             'paper_id': result_papers,
             'paper_keywords': result_keyword
         }
+
+        if DEBUG==1:
+            result_papers_title = []
+            for paper_id in result_papers:
+                result_papers_title.append(papers_id_title[paper_id])
+            result = {
+                'paper_id': result_papers,
+                'paper_title': result_papers_title
+            }
+
+    
 
         # print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
         return Response(result, status=status.HTTP_200_OK)
