@@ -17,7 +17,7 @@ from django.conf import settings
 import pickle
 from sentence_transformers import SentenceTransformer
 import scipy
-from .data import embedding_vector
+# from .data import embedding_vector
 
 class AutoComplete(APIView):
     """
@@ -490,6 +490,7 @@ class SearchGet(APIView):
             papers += temp_papers
         return list(set(papers)),mapping_keyword_id
 
+    """
     def _get_em_scores(self, papers, keywords):
         # initial for embbeding vector
         W_TITLE = 1
@@ -522,11 +523,8 @@ class SearchGet(APIView):
     def _normalize_score(self,score,old_min,old_max,new_min,new_max):
         normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
         return normalized_score
+    """
 
-    # def _keyword_score(self,max_n_keyword,n_keyword):
-    #     MAX_KEYWORD_SCORE = 10
-    #     keyword_score = (n_keyword/max_n_keyword) * 40
-    #     return keyword_score
 
     def get(self, request, format=None):
         """
@@ -538,8 +536,10 @@ class SearchGet(APIView):
         sort_by = int(request.GET.get('sortBy',0))
         sort_order = int(request.GET.get('sortOrder',0))
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
+        DEBUG = int(request.GET.get('debug',0)) # for debug
         response = requests.post(self.preprocess_url,json={"text": q})
         keywords,cleaned_response = self._get_keys(response.json())
+        
 
 
         if(filter_year_range == 'DEFAULT'):
@@ -549,6 +549,11 @@ class SearchGet(APIView):
             to_year = int(filter_year_range[5:])
             papers,mapping_keyword_id = self._get_papers(keywords,(from_year,to_year))
         
+        if DEBUG==1:
+            papers_id_title = {}
+            for paper in papers:
+                if paper.paper_id not in papers_id_title:
+                    papers_id_title[paper.paper_id] = paper.paper_title
 
         papers_score = {}
         temp_scores = []
@@ -577,6 +582,8 @@ class SearchGet(APIView):
         elif(sort_by == 2): #publish date
             for i,paper in enumerate(papers):
                 temp_scores[i][2] = paper.publish_date
+
+        """
         elif(sort_by == 3): # embedding vector
             W_EM = 1
             W_POP = 1
@@ -589,23 +596,7 @@ class SearchGet(APIView):
                 normalized_score = self._normalize_score(scores[paper.paper_id],min(l_scores),max(l_scores),0,1)
                 normalized_pop_score = self._normalize_score(paper.popularity,min(l_popularity),max(l_popularity),0,1)
                 temp_scores[i][1] = (W_EM * normalized_score) + (W_POP * normalized_pop_score) #ignore n_keywords
-
-        # #bm25
-        #     corpus_abstract = [paper.abstract.lower() for paper in papers]
-        #     corpus_title = [paper.paper_title.lower() for paper in papers]
-
-        #     tokenized_corpus_abstract = [doc.split(" ") for doc in corpus_abstract]
-        #     tokenized_corpus_title = [doc.split(" ") for doc in corpus_title]
-
-        #     bm25_abstract = BM25Okapi(tokenized_corpus_abstract)
-        #     bm25_title = BM25Okapi(tokenized_corpus_title)
-            
-        #     doc_scores_abstract = bm25_abstract.get_scores(keywords)
-        #     doc_scores_title = bm25_title.get_scores(keywords)
-
-        #     for i in range(len(papers)):
-        #         temp_scores[i][2] = doc_scores_abstract[i] + doc_scores_title[i]
-
+        """
 
         #final_score
         for score in temp_scores:
@@ -628,11 +619,21 @@ class SearchGet(APIView):
                     papers_keyword[paper].append(keyword)
         result_keyword = [papers_keyword[paper] for paper in result_papers]
         
-        
         result = {
             'paper_id': result_papers,
             'paper_keywords': result_keyword
         }
+
+        if DEBUG==1:
+            result_papers_title = []
+            for paper_id in result_papers:
+                result_papers_title.append(papers_id_title[paper_id])
+            result = {
+                'paper_id': result_papers,
+                'paper_title': result_papers_title
+            }
+
+    
 
         # print(sorted(papers_score.items(), key=lambda score: (score[1][0],score[1][1]))[::-1])
         return Response(result, status=status.HTTP_200_OK)
