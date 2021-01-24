@@ -95,6 +95,7 @@ class PaperD3Get(APIView):
 
 
         ent_id = 1
+        link_id = 1
         nodes = dict()
         links = list()
         link_nums = dict()
@@ -126,11 +127,14 @@ class PaperD3Get(APIView):
                 link_nums[link] += 1
 
             links.append({
+                'id': link_id,
                 'source': source_id,
                 'target': target_id,
                 'label': relation_name,
-                'linkNum': link_nums[link]
+                'linkNum': link_nums[link],
+                'counter': 1 if (target_id,source_id) in link_nums else 0,
             })
+            link_id += 1
         
         for author in authors:
             author_ent = (author, 'Author',)
@@ -141,11 +145,14 @@ class PaperD3Get(APIView):
             else:
                 author_node_id = nodes[author_ent]
             links.append({
+                'id': link_id,
                 'source': author_node_id, 
                 'target': paper_end_id,
                 'label': 'author_of',
-                'linkNum': 1
+                'linkNum': 1,
+                'counter': 0,
             })
+            link_id += 1
 
         node_list = []
         for (ent, eid) in nodes.items():
@@ -180,6 +187,7 @@ class Key_PaperD3Get(APIView):
         
         get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1] 
         ent_id = 1
+        link_id = 1 
         nodes = dict()
         links = list()
         link_nums = dict()
@@ -205,11 +213,14 @@ class Key_PaperD3Get(APIView):
                     else:
                         link_nums[link] += 1
                     links.append({
+                        'id': link_id,
                         'source': nodes[ent_1],
                         'target': nodes[ent_2],
                         'label': relation_name,
                         'linkNum': link_nums[link],
+                        'counter': 1 if (target_id,source_id) in link_nums else 0,
                     })
+                    link_id += 1
                     seen_relation.add(r)
 
         node_list = []
