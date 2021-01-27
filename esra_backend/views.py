@@ -643,7 +643,77 @@ class FactGet(APIView):
     API for retrieving fact list
     """
 
+    keys = ['key', 'n_labels', 'type', 'isSubject', 'name', 'm_labels']
     url = "http://35.247.162.211/facts"
+    relation_format = {
+        ('hyponym_of', True): '{} is a hyponym of',
+        ('hyponym_of', False): 'Hyponyms of {}',
+        ('refer_to', True): '{} refer to',
+        ('refer_to', False): '{} can be refer by',
+        ('used_for', True): '{} is used for',
+        ('used_for', False): '{} is used by',
+        ('feature_of', True): '{} is a feature of',
+        ('feature_of', False): "{}'s features",
+        ('evaluate_for', True): '{} is evaluate for',
+        ('evaluate_for', False): '{} is evaluated by',
+        ('part_of', True): '{} is part of',
+        ('part_of', False): "{}'s parts",
+        ('compare', None): '{} is compared to',
+        ('related_to', None): '{} is related to',
+    }
+
+    def rename_relation(self, relation_type, isSubject, n):
+        if relation_type=='compare' or relation_type=='related_to':
+            return self.relation_format.get((relation_type, None), '{}').format(n)
+        return self.relation_format.get((relation_type, isSubject), '{}').format(n)
+
+    def relation_restruct(self, fact):
+        n_name, n_label, relation_type, isSubject, m_name, m_label = [fact.get(k) for k in self.keys]
+        
+        if isSubject:
+            n = f"{n_name}({n_label})"
+            m = f"{m_name}({m_label})"
+        else:
+            n = f"{m_name}({m_label})"
+            m = f"{n_name}({n_label})"
+
+        relation_name = self.rename_relation(relation_type, isSubject,n)
+        return relation_name, m 
+    
+    def restruct_facts(self, fact_list):
+        
+        relations = dict()
+
+        for fact in fact_list:
+            paper_set = set()
+            paper_list = []
+            
+            for paper_id in fact['papers']:
+                if paper_id not in paper_set:
+                    paper_set.add(paper_id)
+                    paper_title = Paper.objects.get(pk=paper_id).paper_title
+                    paper_list.append({'id':paper_id, 'title':paper_title})
+            
+            relation_name, m = self.relation_restruct(fact)
+
+            r_dict = {
+                'm': m,
+                'paper_list': paper_list,
+            }
+
+            if relation_name not in relations:
+                relations[relation_name] = [r_dict]
+            else:
+                relations[relation_name].append(r_dict)
+            
+        ret = []
+        for k,v in relations.items():
+            d = {
+                'relation_name': k,
+                'relations': v
+            }
+            ret.append(d)
+        return ret
 
     def get(self, request, format=None):
         q = request.GET.get('q')
@@ -652,14 +722,14 @@ class FactGet(APIView):
         response = requests.get(self.url,params=payload)
         facts = response.json().get('facts', [])
 
-        fact_list = facts
-        for fact in fact_list:
-            paper_set = set()
-            for i,paper_id in enumerate(fact['papers']):
-                if paper_id not in paper_set:
-                    paper_set.add(paper_id)
-                    paper_title = Paper.objects.get(pk=paper_id).paper_title
-                    fact['papers'][i] = {'id':paper_id, 'title':paper_title}
+        fact_list = self.restruct_facts(facts)
+        # for fact in fact_list:
+        #     paper_set = set()
+        #     for i,paper_id in enumerate(fact['papers']):
+        #         if paper_id not in paper_set:
+        #             paper_set.add(paper_id)
+        #             paper_title = Paper.objects.get(pk=paper_id).paper_title
+        #             fact['papers'][i] = {'id':paper_id, 'title':paper_title}
 
         node_dict = dict()
         links = []
@@ -672,7 +742,7 @@ class FactGet(APIView):
         # node_dict[n] = ent_id
         # n_id = 1
         # ent_id += 1
-        keys = ['key', 'n_labels', 'type', 'isSubject', 'name', 'm_labels']
+        keys = self.keys
         for fact in facts:
             n_name, n_label, relation_type, isSubject, m_name, m_label = [fact.get(k) for k in keys]
             # reassure that isSubject is a boolean type var 
