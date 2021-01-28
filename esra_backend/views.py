@@ -479,14 +479,11 @@ class SearchGet(APIView):
             papers += temp_papers
         return list(set(papers)),mapping_keyword_id
 
-    """
     def _get_em_scores(self, papers, keywords):
         # initial for embbeding vector
         W_TITLE = 1
         W_ABSTRACT = 1
 
-        # with open(os.path.join(settings.BASE_DIR, 'embedding.pickle'),'rb') as f:
-        #     embedding_vector = pickle.load(f)
         model = SentenceTransformer('roberta-large-nli-mean-tokens',device='cpu')
 
         title_em = []
@@ -512,7 +509,6 @@ class SearchGet(APIView):
     def _normalize_score(self,score,old_min,old_max,new_min,new_max):
         normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
         return normalized_score
-    """
 
 
     def get(self, request, format=None):
@@ -572,11 +568,10 @@ class SearchGet(APIView):
             for i,paper in enumerate(papers):
                 temp_scores[i][2] = paper.publish_date
 
-        """
         elif(sort_by == 3): # embedding vector
             W_EM = 1
             W_POP = 1
-            scores = self._get_em_scores(papers,keywords)
+            scores = self._get_em_scores(papers,q) # q is query/ keywords for extracted keyword
 
             l_scores = list(scores.values())
             l_popularity = [paper.popularity for paper in papers]
@@ -585,7 +580,6 @@ class SearchGet(APIView):
                 normalized_score = self._normalize_score(scores[paper.paper_id],min(l_scores),max(l_scores),0,1)
                 normalized_pop_score = self._normalize_score(paper.popularity,min(l_popularity),max(l_popularity),0,1)
                 temp_scores[i][1] = (W_EM * normalized_score) + (W_POP * normalized_pop_score) #ignore n_keywords
-        """
 
         #final_score
         for score in temp_scores:
