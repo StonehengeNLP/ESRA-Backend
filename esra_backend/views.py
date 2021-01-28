@@ -609,18 +609,18 @@ class FactGet(APIView):
     relation_format = {
         ('hyponym_of', True): '{} is a hyponym of...',
         ('hyponym_of', False): '{} hyponyms',
-        ('refer_to', True): '{} refer to',
-        ('refer_to', False): '{} can be refer by',
-        ('used_for', True): '{} is used for',
-        ('used_for', False): '{} is used by',
-        ('feature_of', True): '{} is a feature of',
+        ('refer_to', True): '{} refer to...',
+        ('refer_to', False): '{} can be refer by..',
+        ('used_for', True): '{} is used for...',
+        ('used_for', False): '{} is used by...',
+        ('feature_of', True): '{} is a feature of...',
         ('feature_of', False): "{}'s features",
-        ('evaluate_for', True): '{} is evaluate for',
-        ('evaluate_for', False): '{} is evaluated by',
-        ('part_of', True): '{} is part of',
+        ('evaluate_for', True): '{} is evaluate for...',
+        ('evaluate_for', False): '{} is evaluated by...',
+        ('part_of', True): '{} is part of...',
         ('part_of', False): "{}'s parts",
-        ('compare', None): '{} is compared to',
-        ('related_to', None): '{} is related to',
+        ('compare', None): '{} is compared to...',
+        ('related_to', None): '{} is related to...',
     }
 
     def rename_relation(self, relation_type, isSubject, n):
