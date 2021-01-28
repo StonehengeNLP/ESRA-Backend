@@ -17,7 +17,7 @@ from django.conf import settings
 import pickle
 from sentence_transformers import SentenceTransformer
 import scipy
-# from .data import embedding_vector
+from .data import embedding_vector
 
 class AutoComplete(APIView):
     """
