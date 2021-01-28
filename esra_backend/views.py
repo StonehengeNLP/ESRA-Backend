@@ -37,39 +37,6 @@ class AutoComplete(APIView):
         ]
         return Response(ret,status=status.HTTP_200_OK)
 
-class GraphGet(APIView):
-    """
-        GET Rest API view for send request to graph database manager
-        to get graph
-    """
-
-    # TODO: change from local to production url
-    graph_url = "http://35.247.162.211/graph"
-
-    def get(self, request, format=None):
-        payload = urllib.parse.urlencode({
-            "keyword": self.request.GET.get('keyword', ''),
-            "paper_title": self.request.GET.get('paper_title', ''),
-            "limit": self.request.GET.get('limit', 0)
-        })
-        # print(payload)
-        response = requests.get(self.graph_url,params=payload)
-        relations = response.json().get('graph', [])
-        nodes = set()
-        links = list()
-        for relation in relations:
-            relation_name, ent_1, ent_2 = relation
-            ent_1, ent_2 = tuple(ent_1), tuple(ent_2)
-            nodes.update([ent_1[0], ent_2[0]])
-            links.append({
-                'source': ent_1[0],
-                'target': ent_2[0],
-                'label': relation_name,
-            })
-        nodes = [{'id': name} for name in nodes]
-        data = {'nodes': nodes, 'links': links}
-        return Response(data,status=status.HTTP_200_OK)
-
 class PaperD3Get(APIView):
     """
     API for retrieving data to visualize w/ D3 force graph
@@ -646,8 +613,8 @@ class FactGet(APIView):
     keys = ['key', 'n_labels', 'type', 'isSubject', 'name', 'm_labels']
     url = "http://35.247.162.211/facts"
     relation_format = {
-        ('hyponym_of', True): '{} is a hyponym of',
-        ('hyponym_of', False): 'Hyponyms of {}',
+        ('hyponym_of', True): '{} is a hyponym of...',
+        ('hyponym_of', False): '{} hyponyms',
         ('refer_to', True): '{} refer to',
         ('refer_to', False): '{} can be refer by',
         ('used_for', True): '{} is used for',
@@ -668,17 +635,14 @@ class FactGet(APIView):
         return self.relation_format.get((relation_type, isSubject), '{}').format(n)
 
     def relation_restruct(self, fact):
+        get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1]
         n_name, n_label, relation_type, isSubject, m_name, m_label = [fact.get(k) for k in self.keys]
-        
-        if isSubject:
-            n = f"{n_name}({n_label})"
-            m = f"{m_name}({m_label})"
-        else:
-            n = f"{m_name}({m_label})"
-            m = f"{n_name}({n_label})"
-
+        n_label = get_label(n_label)
+        m_label = get_label(m_label)
+        n = n_name
+        m = m_name
         relation_name = self.rename_relation(relation_type, isSubject,n)
-        return relation_name, m 
+        return relation_name, m, m_label, n_label 
     
     def restruct_facts(self, fact_list):
         
@@ -694,10 +658,11 @@ class FactGet(APIView):
                     paper_title = Paper.objects.get(pk=paper_id).paper_title
                     paper_list.append({'id':paper_id, 'title':paper_title})
             
-            relation_name, m = self.relation_restruct(fact)
-
+            relation_name, m, m_label, n_label = self.relation_restruct(fact)
+            relation_name = (relation_name, n_label)
             r_dict = {
                 'm': m,
+                'm_label': m_label,
                 'paper_list': paper_list,
             }
 
@@ -709,7 +674,8 @@ class FactGet(APIView):
         ret = []
         for k,v in relations.items():
             d = {
-                'relation_name': k,
+                'relation_name': k[0],
+                'n_label': k[1],
                 'relations': v
             }
             ret.append(d)
@@ -733,6 +699,8 @@ class FactGet(APIView):
 
         node_dict = dict()
         links = []
+        link_id = 1 
+        link_nums = dict()
         ent_id = 1
         get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1]
         get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
@@ -763,11 +731,22 @@ class FactGet(APIView):
             n_id = node_dict[n]
             m_id = node_dict[m]
             source, target = get_source_target(n_id,m_id,isSubject)
+
+            # store link number
+            link = (source, target)
+            if link not in link_nums:
+                link_nums[link] = 1
+            else:
+                link_nums[link] += 1
             links.append({
+                'id': link_id,
                 'source': source,
                 'target': target,
-                'label': relation_type
+                'label': relation_type,
+                'linkNum': link_nums[link],
+                'counter': 1 if (target,source) in link_nums else 0,
             })
+            link_id += 1
         
         node_list = []
         for (ent, eid) in node_dict.items():
