@@ -268,7 +268,8 @@ class PaperList(generics.ListAPIView):
                 
                 explanation_json = explanations.json()['explanations']
                 for i, paper in enumerate(response_data):
-                    paper['explanation'] = explanation_json[i]
+                    paper['explanation'] = explanation_json[i][0]
+                    paper['explanation_keywords'] = explanation_json[i][1]
 
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
