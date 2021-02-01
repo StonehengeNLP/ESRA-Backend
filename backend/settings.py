@@ -122,12 +122,12 @@ REST_FRAMEWORK = {
 
 CORS_ORIGIN_ALLOW_ALL = False
 
-CORS_ORIGIN_WHITELIST = (
+CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',# enable React app
-    'http://localhost:80',# http
+    'http://localhost',# http
     'http://localhost:8000',# http
     # 'http://frontend:3000',
-)
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
