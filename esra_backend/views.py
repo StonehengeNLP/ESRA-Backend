@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
 from django.db.models import Q
-from rank_bm25 import BM25Okapi
+# from rank_bm25 import BM25Okapi
 from .serializer import (PaperSerializer, AuthorSerializer, PaperListSerializer,
                          AffiliationSerializer, PaperAuthorAffiliationSerializer)
 from time import sleep
