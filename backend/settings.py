@@ -26,7 +26,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env.bool('DEBUG_MODE')
 
 ALLOWED_HOSTS = []
 
@@ -124,6 +124,8 @@ CORS_ORIGIN_ALLOW_ALL = False
 
 CORS_ORIGIN_WHITELIST = (
     'http://localhost:3000',# enable React app
+    'http://localhost:80',# http
+    'http://localhost:8000',# http
     # 'http://frontend:3000',
 )
 
