@@ -4,3 +4,4 @@ django-environ
 django-cors-headers
 sentence_transformers
 scipy
+gunicorn
