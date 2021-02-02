@@ -296,7 +296,7 @@ class CitePaperPost(APIView):
                     Paper.objects.filter(cite_to=paper_id).order_by(f"-{order_by_field}")
                 )
             return (
-                Paper.objects.filter(cite_to=paper_id).order_by(f"-{order_by_field}")
+                Paper.objects.filter(cite_to=paper_id).order_by(order_by_field)
             )
 
     def get_field_name(self, fid):
