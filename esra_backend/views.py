@@ -20,7 +20,7 @@ import scipy
 from .data import embedding_vector
 
 from .documents import PaperDocument
-from .helps import ElasticSearchBookService
+from .helps import ElasticSearchPaperService, ElasticSearchPaperFilterService
 from .utils import rebuild_elasticsearch_index, delete_elasticsearch_index, is_empty_or_null
 import elasticsearch
 import datetime
@@ -781,7 +781,8 @@ class TestElastic(APIView):
         skip = int(request.data.get('skip', 0))
         sort_by = int(request.data.get('sortBy',0))
         sort_order = int(request.data.get('sortOrder',0))
-        # filter_year_range = str(request.data.get('filterYear','DEFAULT')).strip()
+        filter_year_range = str(request.data.get('filterYear','DEFAULT')).strip()
+
 
         if is_empty_or_null(query):
             error_message = "queries should not be empty"
@@ -793,7 +794,13 @@ class TestElastic(APIView):
 
         try:
             # rebuild_elasticsearch_index()
-            search_doc = ElasticSearchBookService(PaperDocument, query, k)
+            if filter_year_range == 'DEFAULT':
+                search_doc = ElasticSearchPaperService(PaperDocument, query, k)
+            else:
+                from_year = int(filter_year_range[:4])
+                to_year = int(filter_year_range[5:])
+                filter_year_range = (from_year,to_year)
+                search_doc = ElasticSearchPaperFilterService(PaperDocument, query, k, filter_year_range)
 
             result = search_doc.run_query_list()
 
