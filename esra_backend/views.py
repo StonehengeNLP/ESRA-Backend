@@ -760,7 +760,7 @@ class FactGet(APIView):
         data = {'facts': fact_list, 'nodes':node_list, 'links':links}
         return Response(data,status=status.HTTP_200_OK)
 
-class TestElastic(APIView):
+class ElasticSearchPost(APIView):
 
     def __send_response(self, message, status_code, data=None):
         content = {

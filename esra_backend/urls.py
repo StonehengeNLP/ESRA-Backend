@@ -2,7 +2,7 @@ from django.urls import path,include
 from .views import (PaperGet, PaperList, PaperPost, 
                     AuthorPost, AffiliationPost, PaperAuthorAffilationPost,
                     SearchGet, AutoComplete, PaperD3Get, FactGet,
-                    Key_PaperD3Get, CitePaperPost, TestElastic)
+                    Key_PaperD3Get, CitePaperPost, ElasticSearchPost)
 
 urlpatterns = [
 
@@ -52,7 +52,7 @@ urlpatterns = [
     path(
         'search',
         SearchGet.as_view(),
-        name='search'
+        name='search_get'
     ),
     path(
         'facts',
@@ -70,8 +70,8 @@ urlpatterns = [
         name='cite_paper_post'
     ),
     path(
-        'testElastic',
-        TestElastic.as_view(),
-        name='elastic_post'
+        'elasticsearch',
+        ElasticSearchPost.as_view(),
+        name='elasticsearch_post'
     ),
 ]
