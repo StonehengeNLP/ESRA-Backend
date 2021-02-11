@@ -2,7 +2,7 @@ from django.urls import path,include
 from .views import (PaperGet, PaperList, PaperPost, 
                     AuthorPost, AffiliationPost, PaperAuthorAffilationPost,
                     SearchGet, AutoComplete, PaperD3Get, FactGet,
-                    Key_PaperD3Get, CitePaperPost, ElasticSearchPost)
+                    Key_PaperD3Get, CitePaperPost, ElasticSearchGet)
 
 urlpatterns = [
 
@@ -71,7 +71,7 @@ urlpatterns = [
     ),
     path(
         'elasticsearch',
-        ElasticSearchPost.as_view(),
+        ElasticSearchGet.as_view(),
         name='elasticsearch_post'
     ),
 ]

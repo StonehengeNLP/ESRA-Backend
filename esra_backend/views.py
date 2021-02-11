@@ -760,7 +760,7 @@ class FactGet(APIView):
         data = {'facts': fact_list, 'nodes':node_list, 'links':links}
         return Response(data,status=status.HTTP_200_OK)
 
-class ElasticSearchPost(APIView):
+class ElasticSearchGet(APIView):
 
     def __send_response(self, message, status_code, data=None):
         content = {
@@ -774,14 +774,15 @@ class ElasticSearchPost(APIView):
         return normalized_score
 
 
-    def post(self, request):
-        query = request.data.get('q', None)
+    def get(self, request):
+        query = request.GET.get('q', None)
         k = 100
-        limit = int(request.data.get('lim',10))
-        skip = int(request.data.get('skip', 0))
-        sort_by = int(request.data.get('sortBy',0))
-        sort_order = int(request.data.get('sortOrder',0))
-        filter_year_range = str(request.data.get('filterYear','DEFAULT')).strip()
+        limit = int(request.GET.get('lim',10))
+        skip = int(request.GET.get('skip', 0))
+        sort_by = int(request.GET.get('sortBy',0))
+        sort_order = int(request.GET.get('sortOrder',0))
+        filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
+        DEBUG = int(request.GET.get('debug',0)) # for debug
 
 
         if is_empty_or_null(query):
@@ -859,11 +860,16 @@ class ElasticSearchPost(APIView):
                 papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
 
         if sort_order==0:
-            sorted_papers = [paper_title[paper_id] for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
+            sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
         elif sort_order==1:
-            sorted_papers = [paper_title[paper_id] for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])).keys()]
+            sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])).keys()]
 
-        response = {'papers': sorted_papers[skip:skip+limit]}
+        final_result = sorted_papers[skip:skip+limit]
+        
+        if DEBUG==1:
+            final_result = [paper_title[paper_id] for paper_id in final_result]
+
+        response = final_result
         # print(sorted_papers)
 
         return self.__send_response('success', status.HTTP_200_OK, response)
