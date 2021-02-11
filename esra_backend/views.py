@@ -773,9 +773,15 @@ class TestElastic(APIView):
         normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
         return normalized_score
 
+
     def post(self, request):
-        query = request.data.get('query', None)
+        query = request.data.get('q', None)
         k = 100
+        limit = int(request.data.get('lim',10))
+        skip = int(request.data.get('skip', 0))
+        sort_by = int(request.data.get('sortBy',0))
+        sort_order = int(request.data.get('sortOrder',0))
+        # filter_year_range = str(request.data.get('filterYear','DEFAULT')).strip()
 
         if is_empty_or_null(query):
             error_message = "queries should not be empty"
@@ -790,7 +796,6 @@ class TestElastic(APIView):
             search_doc = ElasticSearchBookService(PaperDocument, query, k)
 
             result = search_doc.run_query_list()
-            response = {'papers': result}
 
             # delete_elasticsearch_index()
         
@@ -809,36 +814,50 @@ class TestElastic(APIView):
         min_score = 0
         max_pop = 0
         min_pop =0
-        for paper in response['papers']:
+        for paper in result:
             paper_title[paper['_id']] = paper['_source']['paper_title']
-            if paper['_id'] not in papers:
-                papers[paper['_id']] = [0,0]
-            papers[paper['_id']][0] = paper['_score']
-            publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
-            diff_date = datetime.date.today() - publish_date
-            popularity = int(paper['_source']['citation_count']) / diff_date.days
-            papers[paper['_id']][1] = popularity
 
-            if float(paper['_score']) > max_score:
-                max_score = float(paper['_score'])
-            if float(paper['_score']) < min_score:
-                min_score = float(paper['_score'])
-            if popularity > max_pop:
-                max_pop = popularity
-            if popularity < min_pop:
-                min_pop = popularity
+            if sort_by == 0: #relevance
+                if paper['_id'] not in papers:
+                    papers[paper['_id']] = [0,0]
+                papers[paper['_id']][0] = paper['_score']
+                publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+                diff_date = datetime.date.today() - publish_date
+                popularity = int(paper['_source']['citation_count']) / diff_date.days
+                papers[paper['_id']][1] = popularity
+
+                if float(paper['_score']) > max_score:
+                    max_score = float(paper['_score'])
+                if float(paper['_score']) < min_score:
+                    min_score = float(paper['_score'])
+                if popularity > max_pop:
+                    max_pop = popularity
+                if popularity < min_pop:
+                    min_pop = popularity
+            
+            elif sort_by==1: #citation_count
+                papers[paper['_id']] = paper['_source']['citation_count']
+            
+            elif sort_by==2: #publish_date
+                papers[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
         
-        W_ELASTIC_SCORE = 0.2
-        W_POPULARITY = 0.8
 
-        for key in papers.keys():
-            papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)
-            papers[key][1] = self._normalize_score(papers[key][1],min_pop,max_pop,0,1)
-            papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
+        if sort_by==0:
+            W_ELASTIC_SCORE = 0.5
+            W_POPULARITY = 0.5
 
-        sorted_papers = [paper_title[paper_id] for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
+            for key in papers.keys():
+                papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)
+                papers[key][1] = self._normalize_score(papers[key][1],min_pop,max_pop,0,1)
+                papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
 
-        print(sorted_papers)
+        if sort_order==0:
+            sorted_papers = [paper_title[paper_id] for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
+        elif sort_order==1:
+            sorted_papers = [paper_title[paper_id] for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])).keys()]
+
+        response = {'papers': sorted_papers[skip:skip+limit]}
+        # print(sorted_papers)
 
         return self.__send_response('success', status.HTTP_200_OK, response)
 
