@@ -4,4 +4,10 @@ django-environ
 django-cors-headers
 sentence_transformers
 scipy
+django-debug-toolbar==2.2
+django-elasticsearch-debug-toolbar==2.0.0
+django-elasticsearch-dsl==7.1.1
+django-elasticsearch-dsl-drf==0.20.8
+elasticsearch==7.6.0
+elasticsearch-dsl==7.1.0
 gunicorn

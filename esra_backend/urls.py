@@ -2,7 +2,7 @@ from django.urls import path,include
 from .views import (PaperGet, PaperList, PaperPost, 
                     AuthorPost, AffiliationPost, PaperAuthorAffilationPost,
                     SearchGet, AutoComplete, PaperD3Get, FactGet,
-                    Key_PaperD3Get, CitePaperPost)
+                    Key_PaperD3Get, CitePaperPost, TestElastic)
 
 urlpatterns = [
 
@@ -68,5 +68,10 @@ urlpatterns = [
         'citePaper',
         CitePaperPost.as_view(),
         name='cite_paper_post'
+    ),
+    path(
+        'testElastic',
+        TestElastic.as_view(),
+        name='elastic_post'
     ),
 ]

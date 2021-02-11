@@ -19,6 +19,12 @@ from sentence_transformers import SentenceTransformer
 import scipy
 from .data import embedding_vector
 
+from .documents import PaperDocument
+from .helps import ElasticSearchBookService
+from .utils import rebuild_elasticsearch_index, delete_elasticsearch_index, is_empty_or_null
+import elasticsearch
+import datetime
+
 class AutoComplete(APIView):
     """
         GET Rest API view for send request to graph database manager
@@ -753,3 +759,89 @@ class FactGet(APIView):
             })
         data = {'facts': fact_list, 'nodes':node_list, 'links':links}
         return Response(data,status=status.HTTP_200_OK)
+
+class TestElastic(APIView):
+
+    def __send_response(self, message, status_code, data=None):
+        content = {
+            "message": message,
+            "result": data if data is not None else []
+            }
+        return Response(content, status=status_code)
+
+    def _normalize_score(self,score,old_min,old_max,new_min,new_max):
+        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
+        return normalized_score
+
+    def post(self, request):
+        query = request.data.get('query', None)
+        k = 100
+
+        if is_empty_or_null(query):
+            error_message = "queries should not be empty"
+            return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
+
+        if is_empty_or_null(k):
+            error_message = "k should be integer and not empty"
+            return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # rebuild_elasticsearch_index()
+            search_doc = ElasticSearchBookService(PaperDocument, query, k)
+
+            result = search_doc.run_query_list()
+            response = {'papers': result}
+
+            # delete_elasticsearch_index()
+        
+        except elasticsearch.ConnectionError as connection_error:
+            error_message = "Elastic search Connection refused"
+            return self.__send_response(error_message, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        except Exception as exception_msg:
+            error_message = str(exception_msg)
+            return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
+
+
+        paper_title = {}
+        papers = {}
+        max_score = 0
+        min_score = 0
+        max_pop = 0
+        min_pop =0
+        for paper in response['papers']:
+            paper_title[paper['_id']] = paper['_source']['paper_title']
+            if paper['_id'] not in papers:
+                papers[paper['_id']] = [0,0]
+            papers[paper['_id']][0] = paper['_score']
+            publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+            diff_date = datetime.date.today() - publish_date
+            popularity = int(paper['_source']['citation_count']) / diff_date.days
+            papers[paper['_id']][1] = popularity
+
+            if float(paper['_score']) > max_score:
+                max_score = float(paper['_score'])
+            if float(paper['_score']) < min_score:
+                min_score = float(paper['_score'])
+            if popularity > max_pop:
+                max_pop = popularity
+            if popularity < min_pop:
+                min_pop = popularity
+        
+        W_ELASTIC_SCORE = 0.2
+        W_POPULARITY = 0.8
+
+        for key in papers.keys():
+            papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)
+            papers[key][1] = self._normalize_score(papers[key][1],min_pop,max_pop,0,1)
+            papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
+
+        sorted_papers = [paper_title[paper_id] for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
+
+        print(sorted_papers)
+
+        return self.__send_response('success', status.HTTP_200_OK, response)
+
+
+
+
