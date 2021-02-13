@@ -19,6 +19,9 @@ from sentence_transformers import SentenceTransformer
 import scipy
 from .data import embedding_vector
 
+
+GM_URL = os.environ.get('GM_URL')
+
 class AutoComplete(APIView):
     """
         GET Rest API view for send request to graph database manager
@@ -27,7 +30,7 @@ class AutoComplete(APIView):
     
     # TODO: change from local to production url
     # autocomplete_url = "https://localhost:5000/complete?q={keywords}"
-    autocomplete_url = "http://35.247.162.211/complete"
+    autocomplete_url = f"{GM_URL}/complete"
 
     def get(self, request, format=None):
         payload = urllib.parse.urlencode({"q" : self.request.GET.get('keywords', '')})
@@ -42,7 +45,7 @@ class PaperD3Get(APIView):
     API for retrieving data to visualize w/ D3 force graph
     """
     
-    graph_url = "http://35.247.162.211/graph"
+    graph_url = f"{GM_URL}/graph"
 
     def get(self, request, format=None):
         paper_id = self.request.GET.get('paper_id')
@@ -137,7 +140,7 @@ class Key_PaperD3Get(APIView):
     API for retrieving graph containing path between keyword node(s) to paper
     """
 
-    graph_url = "http://35.247.162.211/kwGraph"
+    graph_url = f"{GM_URL}/kwGraph"
 
     def get(self, request, format=None):
         keys = self.request.GET.get('keywords')
@@ -223,7 +226,7 @@ class PaperList(generics.ListAPIView):
     """
 
     # TODO: adding explanation retrieving from graph manager to response 
-    explanation_url = 'http://35.247.162.211/explain'
+    explanation_url = f'{GM_URL}/explain'
 
     def _get_paper_by_ids(self, paper_ids):
         return Paper.objects.prefetch_related('paperauthoraffiliation_set').filter(
@@ -421,7 +424,7 @@ class SearchGet(APIView):
 
     """
 
-    preprocess_url = "http://35.247.162.211/preprocess"
+    preprocess_url = f"{GM_URL}/preprocess"
 
     def _get_keys(self, obj):
         LIMIT = 1
@@ -606,12 +609,12 @@ class FactGet(APIView):
     """
 
     keys = ['key', 'n_labels', 'type', 'isSubject', 'name', 'm_labels']
-    url = "http://35.247.162.211/facts"
+    url = f"{GM_URL}/facts"
     relation_format = {
-        ('hyponym_of', True): '{} is a hyponym of...',
-        ('hyponym_of', False): '{} hyponyms',
-        ('refer_to', True): '{} refer to...',
-        ('refer_to', False): '{} can be refer by..',
+        ('hyponym_of', True): '{} is a subtype of...',
+        ('hyponym_of', False): "{}'s subtypes",
+        ('refer_to', True): '{} referred to...',
+        ('refer_to', False): '{} can be referred by..',
         ('used_for', True): '{} is used for...',
         ('used_for', False): '{} is used by...',
         ('feature_of', True): '{} is a feature of...',
