@@ -20,7 +20,7 @@ import scipy
 from .data import embedding_vector
 
 from .documents import PaperDocument
-from .helps import ElasticSearchPaperService, ElasticSearchPaperFilterService
+from .helps import ElasticSearchPaperAndService, ElasticSearchPaperFilterAndService, ElasticSearchPaperOrService, ElasticSearchPaperFilterOrService
 from .utils import rebuild_elasticsearch_index, delete_elasticsearch_index, is_empty_or_null
 import elasticsearch
 import datetime
@@ -796,14 +796,26 @@ class ElasticSearchGet(APIView):
         try:
             # rebuild_elasticsearch_index()
             if filter_year_range == 'DEFAULT':
-                search_doc = ElasticSearchPaperService(PaperDocument, query, k)
+                search_doc = ElasticSearchPaperAndService(PaperDocument, query, k)
             else:
                 from_year = int(filter_year_range[:4])
                 to_year = int(filter_year_range[5:])
                 filter_year_range = (from_year,to_year)
-                search_doc = ElasticSearchPaperFilterService(PaperDocument, query, k, filter_year_range)
+                search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k, filter_year_range)
 
             result = search_doc.run_query_list()
+
+            if len(result)< k:
+                if filter_year_range == 'DEFAULT':
+                    search_doc = ElasticSearchPaperOrService(PaperDocument, query, k)
+                else:
+                    from_year = int(filter_year_range[:4])
+                    to_year = int(filter_year_range[5:])
+                    filter_year_range = (from_year,to_year)
+                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k, filter_year_range)
+
+                result_or = search_doc.run_query_list()
+
 
             # delete_elasticsearch_index()
         
@@ -817,12 +829,15 @@ class ElasticSearchGet(APIView):
 
 
         paper_title = {}
+        paper_id = []
         papers = {}
+        papers_or = {}
         max_score = 0
         min_score = 0
         max_pop = 0
         min_pop =0
         for paper in result:
+            paper_id.append(paper['_id'])
             paper_title[paper['_id']] = paper['_source']['paper_title']
 
             if sort_by == 0: #relevance
@@ -849,6 +864,41 @@ class ElasticSearchGet(APIView):
             elif sort_by==2: #publish_date
                 papers[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
         
+        if len(result) < k:
+            max_score_or = 0
+            min_score_or = 0
+            max_pop_or = 0
+            min_pop_or =0
+            for paper in result_or:
+                if paper['_id'] not in paper_id:
+                    paper_id.append(paper['_id'])
+                    paper_title[paper['_id']] = paper['_source']['paper_title']
+
+                    if sort_by == 0: #relevance
+                        if paper['_id'] not in papers:
+                            papers_or[paper['_id']] = [0,0]
+                        papers_or[paper['_id']][0] = paper['_score']
+                        publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+                        diff_date = datetime.date.today() - publish_date
+                        popularity = int(paper['_source']['citation_count']) / diff_date.days
+                        papers_or[paper['_id']][1] = popularity
+
+                        if float(paper['_score']) > max_score_or:
+                            max_score_or = float(paper['_score'])
+                        if float(paper['_score']) < min_score_or:
+                            min_score_or = float(paper['_score'])
+                        if popularity > max_pop_or:
+                            max_pop_or = popularity
+                        if popularity < min_pop:
+                            min_pop_or = popularity
+                    
+                    elif sort_by==1: #citation_count
+                        papers_or[paper['_id']] = paper['_source']['citation_count']
+                    
+                    elif sort_by==2: #publish_date
+                        papers_or[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+
+        
 
         if sort_by==0:
             W_ELASTIC_SCORE = 0.5
@@ -858,11 +908,21 @@ class ElasticSearchGet(APIView):
                 papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)
                 papers[key][1] = self._normalize_score(papers[key][1],min_pop,max_pop,0,1)
                 papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
+            
+            if len(result) < k:
+                for key in papers_or.keys():
+                    papers_or[key][0] = self._normalize_score(papers_or[key][0],min_score_or,max_score,0,1)
+                    papers_or[key][1] = self._normalize_score(papers_or[key][1],min_pop_or,max_pop,0,1)
+                    papers_or[key] = (W_ELASTIC_SCORE * papers_or[key][0]) + (W_POPULARITY * papers_or[key][1])
 
         if sort_order==0:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
+            if len(result) < k:
+                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-len(result)]
         elif sort_order==1:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])).keys()]
+            if len(result) < k:
+                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-len(result)]
 
         final_result = sorted_papers[skip:skip+limit]
         
