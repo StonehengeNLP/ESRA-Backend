@@ -898,7 +898,7 @@ class ElasticSearchGet(APIView):
                     elif sort_by==2: #publish_date
                         papers_or[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
 
-        
+    
 
         if sort_by==0:
             W_ELASTIC_SCORE = 0.5
@@ -909,20 +909,22 @@ class ElasticSearchGet(APIView):
                 papers[key][1] = self._normalize_score(papers[key][1],min_pop,max_pop,0,1)
                 papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
             
-            if len(result) < k:
-                for key in papers_or.keys():
-                    papers_or[key][0] = self._normalize_score(papers_or[key][0],min_score_or,max_score,0,1)
-                    papers_or[key][1] = self._normalize_score(papers_or[key][1],min_pop_or,max_pop,0,1)
-                    papers_or[key] = (W_ELASTIC_SCORE * papers_or[key][0]) + (W_POPULARITY * papers_or[key][1])
+            # if len(result) < k:
+            for key in papers_or.keys():
+                papers_or[key][0] = self._normalize_score(papers_or[key][0],min_score_or,max_score,0,1)
+                papers_or[key][1] = self._normalize_score(papers_or[key][1],min_pop_or,max_pop,0,1)
+                papers_or[key] = (W_ELASTIC_SCORE * papers_or[key][0]) + (W_POPULARITY * papers_or[key][1])
 
         if sort_order==0:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
             if len(result) < k:
                 sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-len(result)]
+            # sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()]
         elif sort_order==1:
             sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])).keys()]
             if len(result) < k:
                 sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-len(result)]
+            # sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()]
 
         final_result = sorted_papers[skip:skip+limit]
         
