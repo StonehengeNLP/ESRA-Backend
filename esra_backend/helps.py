@@ -12,7 +12,8 @@ class ElasticSearchPaperService:
     filter papers using query from given query list
     """
     def run_query_list(self):
-        q = Q('bool',must=[Q('match', paper_title=self.query), Q('match', abstract=self.query),])
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "operator": "or", "type": "bool_prefix"}})
+        # q = Q('bool',must=[Q('match', paper_title=self.query), Q('match', abstract=self.query),])
 
         search_with_query = self.search_instance.query(q).sort('_score')[0:self.size]
 
@@ -37,8 +38,8 @@ class ElasticSearchPaperFilterService:
         from_year = datetime.datetime.strptime(str(self.filter_year_range[0])+'-01-01','%Y-%m-%d').date()
         to_year = datetime.datetime.strptime(str(self.filter_year_range[1])+'-01-01','%Y-%m-%d').date()
 
-        self.search_instance = self.search_instance.query('match', paper_title=self.query)
-        self.search_instance = self.search_instance.query('match', abstract=self.query)
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "operator": "or", "type": "bool_prefix"}})
+        self.search_instance = self.search_instance.query(q)
         self.search_instance = self.search_instance.filter('range', **{'publish_date': { 'gte': from_year,'lt': to_year}})
         
         search_with_query = self.search_instance.sort('_score')[0:self.size]

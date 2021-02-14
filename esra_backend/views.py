@@ -873,7 +873,3 @@ class ElasticSearchGet(APIView):
         # print(sorted_papers)
 
         return self.__send_response('success', status.HTTP_200_OK, response)
-
-
-
-
