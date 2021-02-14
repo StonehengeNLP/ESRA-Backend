@@ -4,6 +4,7 @@ from numpy.lib.utils import source
 import requests, string
 import urllib.parse
 from rest_framework import permissions, serializers, status, generics
+from rest_framework import response
 from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
@@ -219,6 +220,23 @@ class PaperGet(generics.RetrieveAPIView):
         except Paper.DoesNotExist:
             return None
         return obj
+    
+    def get(self, request, *args, **kwargs):
+        obj = self.get_object()
+        capitalizer = lambda x: string.capwords(x)
+        try:
+            serializer = PaperSerializer(instance=obj)
+            paper = serializer.data
+            paper['conference'] = capitalizer(paper['conference'])
+            paper['authors'] = list(map(capitalizer, paper['authors']))
+            paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+            paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+            if "" in paper['affiliations']:
+                paper['affiliations'].remove("")
+            return Response(paper, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response(None, status=status.HTTP_400_BAD_REQUEST)
     
 class PaperList(generics.ListAPIView):
     """
