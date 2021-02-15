@@ -26,7 +26,7 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env.bool('DEBUG_MODE')
+# DEBUG = env.bool('DEBUG_MODE')
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -44,6 +44,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'elasticsearch_dsl',
+    'django_elasticsearch_dsl',
+    'django_elasticsearch_dsl_drf',
+    'elastic_panel',
 
     # third party apps
     'rest_framework',
@@ -122,6 +126,14 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny'
     ]
 }
+
+# define elasticsearch server details
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'localhost:9200'
+    },
+}
+
 
 CORS_ORIGIN_ALLOW_ALL = False
 

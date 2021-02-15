@@ -20,8 +20,14 @@ from sentence_transformers import SentenceTransformer
 import scipy
 from .data import embedding_vector
 
-
 GM_URL = os.environ.get('GM_URL')
+
+from .documents import PaperDocument
+from .helps import ElasticSearchPaperAndService, ElasticSearchPaperFilterAndService, ElasticSearchPaperOrService, ElasticSearchPaperFilterOrService
+from .utils import rebuild_elasticsearch_index, delete_elasticsearch_index, is_empty_or_null
+import elasticsearch
+import datetime
+
 
 class AutoComplete(APIView):
     """
@@ -774,3 +780,179 @@ class FactGet(APIView):
             })
         data = {'facts': fact_list, 'nodes':node_list, 'links':links}
         return Response(data,status=status.HTTP_200_OK)
+
+class ElasticSearchGet(APIView):
+
+    def __send_response(self, message, status_code, data=None):
+        content = {
+            "message": message,
+            "result": data if data is not None else []
+            }
+        return Response(content, status=status_code)
+
+    def _normalize_score(self,score,old_min,old_max,new_min,new_max):
+        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
+        return normalized_score
+
+
+    def get(self, request):
+        query = request.GET.get('q', None)
+        k = 100
+        limit = int(request.GET.get('lim',10))
+        skip = int(request.GET.get('skip', 0))
+        sort_by = int(request.GET.get('sortBy',0))
+        sort_order = int(request.GET.get('sortOrder',0))
+        filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
+        DEBUG = int(request.GET.get('debug',0)) # for debug
+
+
+        if is_empty_or_null(query):
+            error_message = "queries should not be empty"
+            return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
+
+        if is_empty_or_null(k):
+            error_message = "k should be integer and not empty"
+            return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # rebuild_elasticsearch_index()
+            if filter_year_range == 'DEFAULT':
+                search_doc = ElasticSearchPaperAndService(PaperDocument, query, k)
+            else:
+                from_year = int(filter_year_range[:4])
+                to_year = int(filter_year_range[5:])
+                filter_year_range = (from_year,to_year)
+                search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k, filter_year_range)
+
+            result = search_doc.run_query_list()
+
+            if len(result)< k:
+                if filter_year_range == 'DEFAULT':
+                    search_doc = ElasticSearchPaperOrService(PaperDocument, query, k)
+                else:
+                    from_year = int(filter_year_range[:4])
+                    to_year = int(filter_year_range[5:])
+                    filter_year_range = (from_year,to_year)
+                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k, filter_year_range)
+
+                result_or = search_doc.run_query_list()
+
+
+            # delete_elasticsearch_index()
+        
+        except elasticsearch.ConnectionError as connection_error:
+            error_message = "Elastic search Connection refused"
+            return self.__send_response(error_message, status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        except Exception as exception_msg:
+            error_message = str(exception_msg)
+            return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
+
+
+        paper_title = {}
+        paper_id = []
+        papers = {}
+        papers_or = {}
+        max_score = 0
+        min_score = 0
+        max_pop = 0
+        min_pop =0
+        for paper in result:
+            paper_id.append(paper['_id'])
+            paper_title[paper['_id']] = paper['_source']['paper_title']
+
+            if sort_by == 0: #relevance
+                if paper['_id'] not in papers:
+                    papers[paper['_id']] = [0,0]
+                papers[paper['_id']][0] = paper['_score']
+                publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+                diff_date = datetime.date.today() - publish_date
+                popularity = int(paper['_source']['citation_count']) / diff_date.days
+                papers[paper['_id']][1] = popularity
+
+                if float(paper['_score']) > max_score:
+                    max_score = float(paper['_score'])
+                if float(paper['_score']) < min_score:
+                    min_score = float(paper['_score'])
+                if popularity > max_pop:
+                    max_pop = popularity
+                if popularity < min_pop:
+                    min_pop = popularity
+            
+            elif sort_by==1: #citation_count
+                papers[paper['_id']] = paper['_source']['citation_count']
+            
+            elif sort_by==2: #publish_date
+                papers[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+        
+        if len(result) < k:
+            max_score_or = 0
+            min_score_or = 0
+            max_pop_or = 0
+            min_pop_or =0
+            for paper in result_or:
+                if paper['_id'] not in paper_id:
+                    paper_id.append(paper['_id'])
+                    paper_title[paper['_id']] = paper['_source']['paper_title']
+
+                    if sort_by == 0: #relevance
+                        if paper['_id'] not in papers:
+                            papers_or[paper['_id']] = [0,0]
+                        papers_or[paper['_id']][0] = paper['_score']
+                        publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+                        diff_date = datetime.date.today() - publish_date
+                        popularity = int(paper['_source']['citation_count']) / diff_date.days
+                        papers_or[paper['_id']][1] = popularity
+
+                        if float(paper['_score']) > max_score_or:
+                            max_score_or = float(paper['_score'])
+                        if float(paper['_score']) < min_score_or:
+                            min_score_or = float(paper['_score'])
+                        if popularity > max_pop_or:
+                            max_pop_or = popularity
+                        if popularity < min_pop:
+                            min_pop_or = popularity
+                    
+                    elif sort_by==1: #citation_count
+                        papers_or[paper['_id']] = paper['_source']['citation_count']
+                    
+                    elif sort_by==2: #publish_date
+                        papers_or[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+
+    
+
+        if sort_by==0:
+            W_ELASTIC_SCORE = 0.5
+            W_POPULARITY = 0.5
+
+            for key in papers.keys():
+                papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)
+                papers[key][1] = self._normalize_score(papers[key][1],min_pop,max_pop,0,1)
+                papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
+            
+            # if len(result) < k:
+            for key in papers_or.keys():
+                papers_or[key][0] = self._normalize_score(papers_or[key][0],min_score_or,max_score,0,1)
+                papers_or[key][1] = self._normalize_score(papers_or[key][1],min_pop_or,max_pop,0,1)
+                papers_or[key] = (W_ELASTIC_SCORE * papers_or[key][0]) + (W_POPULARITY * papers_or[key][1])
+
+        if sort_order==0:
+            sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
+            if len(result) < k:
+                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-len(result)]
+            # sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()]
+        elif sort_order==1:
+            sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])).keys()]
+            if len(result) < k:
+                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-len(result)]
+            # sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()]
+
+        final_result = sorted_papers[skip:skip+limit]
+        
+        if DEBUG==1:
+            final_result = [paper_title[paper_id] for paper_id in final_result]
+
+        response = final_result
+        # print(sorted_papers)
+
+        return self.__send_response('success', status.HTTP_200_OK, response)
