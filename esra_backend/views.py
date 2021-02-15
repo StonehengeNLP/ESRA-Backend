@@ -4,6 +4,7 @@ from numpy.lib.utils import source
 import requests, string
 import urllib.parse
 from rest_framework import permissions, serializers, status, generics
+from rest_framework import response
 from rest_framework.views import APIView
 from rest_framework.response import Response 
 from .models import *
@@ -19,11 +20,14 @@ from sentence_transformers import SentenceTransformer
 import scipy
 from .data import embedding_vector
 
+GM_URL = os.environ.get('GM_URL')
+
 from .documents import PaperDocument
 from .helps import ElasticSearchPaperAndService, ElasticSearchPaperFilterAndService, ElasticSearchPaperOrService, ElasticSearchPaperFilterOrService
 from .utils import rebuild_elasticsearch_index, delete_elasticsearch_index, is_empty_or_null
 import elasticsearch
 import datetime
+
 
 class AutoComplete(APIView):
     """
@@ -33,7 +37,7 @@ class AutoComplete(APIView):
     
     # TODO: change from local to production url
     # autocomplete_url = "https://localhost:5000/complete?q={keywords}"
-    autocomplete_url = "http://35.247.162.211/complete"
+    autocomplete_url = f"{GM_URL}/complete"
 
     def get(self, request, format=None):
         payload = urllib.parse.urlencode({"q" : self.request.GET.get('keywords', '')})
@@ -48,7 +52,7 @@ class PaperD3Get(APIView):
     API for retrieving data to visualize w/ D3 force graph
     """
     
-    graph_url = "http://35.247.162.211/graph"
+    graph_url = f"{GM_URL}/graph"
 
     def get(self, request, format=None):
         paper_id = self.request.GET.get('paper_id')
@@ -143,7 +147,7 @@ class Key_PaperD3Get(APIView):
     API for retrieving graph containing path between keyword node(s) to paper
     """
 
-    graph_url = "http://35.247.162.211/kwGraph"
+    graph_url = f"{GM_URL}/kwGraph"
 
     def get(self, request, format=None):
         keys = self.request.GET.get('keywords')
@@ -223,13 +227,30 @@ class PaperGet(generics.RetrieveAPIView):
             return None
         return obj
     
+    def get(self, request, *args, **kwargs):
+        obj = self.get_object()
+        capitalizer = lambda x: string.capwords(x)
+        try:
+            serializer = PaperSerializer(instance=obj)
+            paper = serializer.data
+            paper['conference'] = capitalizer(paper['conference'])
+            paper['authors'] = list(map(capitalizer, paper['authors']))
+            paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+            paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+            if "" in paper['affiliations']:
+                paper['affiliations'].remove("")
+            return Response(paper, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response(None, status=status.HTTP_400_BAD_REQUEST)
+    
 class PaperList(generics.ListAPIView):
     """
     GET Rest API view for requesting papers information.
     """
 
     # TODO: adding explanation retrieving from graph manager to response 
-    explanation_url = 'http://35.247.162.211/explain'
+    explanation_url = f'{GM_URL}/explain'
 
     def _get_paper_by_ids(self, paper_ids):
         return Paper.objects.prefetch_related('paperauthoraffiliation_set').filter(
@@ -427,7 +448,7 @@ class SearchGet(APIView):
 
     """
 
-    preprocess_url = "http://35.247.162.211/preprocess"
+    preprocess_url = f"{GM_URL}/preprocess"
 
     def _get_keys(self, obj):
         LIMIT = 1
@@ -612,12 +633,12 @@ class FactGet(APIView):
     """
 
     keys = ['key', 'n_labels', 'type', 'isSubject', 'name', 'm_labels']
-    url = "http://35.247.162.211/facts"
+    url = f"{GM_URL}/facts"
     relation_format = {
-        ('hyponym_of', True): '{} is a hyponym of...',
-        ('hyponym_of', False): '{} hyponyms',
-        ('refer_to', True): '{} refer to...',
-        ('refer_to', False): '{} can be refer by..',
+        ('hyponym_of', True): '{} is a subtype of...',
+        ('hyponym_of', False): "{}'s subtypes",
+        ('refer_to', True): '{} referred to...',
+        ('refer_to', False): '{} can be referred by..',
         ('used_for', True): '{} is used for...',
         ('used_for', False): '{} is used by...',
         ('feature_of', True): '{} is a feature of...',

@@ -30,6 +30,7 @@ Run the following command:
 ```
 python manage.py makemigrations
 python manage.py migrate
+python manage.py search_index --rebuild
 python manage.py runserver
 ```
 
