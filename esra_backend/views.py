@@ -677,8 +677,13 @@ class FactGet(APIView):
             for paper_id in fact['papers']:
                 if paper_id not in paper_set:
                     paper_set.add(paper_id)
-                    paper_title = Paper.objects.get(pk=paper_id).paper_title
-                    paper_list.append({'id':paper_id, 'title':paper_title})
+                    try: 
+                        # paper_title = Paper.objects.get(pk=paper_id).paper_title
+                        paper_title = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title')
+                        print(paper_title)
+                        paper_list.append({'id':paper_id, 'title':paper_title})
+                    except Paper.DoesNotExist:
+                        continue
             
             relation_name, m, m_label, n_label = self.relation_restruct(fact)
             relation_name = (relation_name, n_label)
@@ -708,6 +713,7 @@ class FactGet(APIView):
         # TODO: check q value
         payload = urllib.parse.urlencode({"q": q})
         response = requests.get(self.url,params=payload)
+        print(response.status_code)
         facts = response.json().get('facts', [])
 
         fact_list = self.restruct_facts(facts)
