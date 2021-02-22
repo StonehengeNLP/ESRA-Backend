@@ -5,19 +5,19 @@ from rest_framework.serializers import ModelSerializer
 from .models import *
 
 
-class AffiliationSerializer(ModelSerializer):
-    """
-    Serializer for retrieveing/adding affiliation information
-    """
-    class Meta:
-        model = Affiliation
-        fields = "__all__"
-        extra_kwargs = {
-        }
+# class AffiliationSerializer(ModelSerializer):
+#     """
+#     Serializer for retrieveing/adding affiliation information
+#     """
+#     class Meta:
+#         model = Affiliation
+#         fields = "__all__"
+#         extra_kwargs = {
+#         }
     
-    def create(self, validated_data):
-        instance, created = self.Meta.model.objects.get_or_create(**validated_data)
-        return instance
+#     def create(self, validated_data):
+#         instance, created = self.Meta.model.objects.get_or_create(**validated_data)
+#         return instance
 
 class AuthorSerializer(ModelSerializer):
     """
@@ -33,21 +33,34 @@ class AuthorSerializer(ModelSerializer):
         instance, created = self.Meta.model.objects.get_or_create(**validated_data)
         return instance 
 
-class PaperAuthorAffiliationSerializer(ModelSerializer):
+class PaperAuthorSerializer(ModelSerializer):
     
     author_info = AuthorSerializer(source='author',many=False, read_only=True)
-    affiliation_info = AffiliationSerializer(source='affiliation', many=False, read_only=True)
 
     class Meta:
-        model = PaperAuthorAffiliation
-        raad_only_fields = ('author_info', 'affiliation_info', )
-        fields = ('paper', 'author', 'affiliation', 'author_info', 
-                  'affiliation_info', )
+        model = PaperAuthor
+        raad_only_fields = ('author_info', )
+        fields = ('paper', 'author', 'author_info', )
         extra_kwargs = {
             'paper': {'write_only': True},
             'author': {'write_only': True},
-            'affiliation': {'write_only': True},
         }
+
+# class PaperAuthorAffiliationSerializer(ModelSerializer):
+    
+#     author_info = AuthorSerializer(source='author',many=False, read_only=True)
+#     affiliation_info = AffiliationSerializer(source='affiliation', many=False, read_only=True)
+
+#     class Meta:
+#         model = PaperAuthorAffiliation
+#         raad_only_fields = ('author_info', 'affiliation_info', )
+#         fields = ('paper', 'author', 'affiliation', 'author_info', 
+#                   'affiliation_info', )
+#         extra_kwargs = {
+#             'paper': {'write_only': True},
+#             'author': {'write_only': True},
+#             'affiliation': {'write_only': True},
+#         }
 
 
 class PaperListSerializer(ModelSerializer):
@@ -62,17 +75,17 @@ class PaperListSerializer(ModelSerializer):
     class Meta:
         model = Paper
         fields = ('paper_id', 'paper_title', 'conference', 'abstract', 
-                  'authors', 'affiliations', )
+                  'authors', )
     
     def get_authors(self, obj):
         return obj.paperauthoraffiliation_set.all().values_list(
             'author__author_name', flat=True
         )
 
-    def get_affiliations(self, obj):
-        return obj.paperauthoraffiliation_set.all().values_list(
-            'affiliation__affiliation_name', flat=True
-        )
+    # def get_affiliations(self, obj):
+    #     return obj.paperauthoraffiliation_set.all().values_list(
+    #         'affiliation__affiliation_name', flat=True
+    #     )
 
 class PaperSerializer(PaperListSerializer):
     """

@@ -11,7 +11,7 @@ from .models import *
 from django.db.models import Q
 # from rank_bm25 import BM25Okapi
 from .serializer import (PaperSerializer, AuthorSerializer, PaperListSerializer,
-                         AffiliationSerializer, PaperAuthorAffiliationSerializer)
+                         PaperAuthorSerializer)
 from time import sleep
 import os
 from django.conf import settings
@@ -57,7 +57,7 @@ class PaperD3Get(APIView):
     def get(self, request, format=None):
         paper_id = self.request.GET.get('paper_id')
         paper_title = Paper.objects.get(pk=paper_id).paper_title
-        authors = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
+        authors = Paper.objects.get(pk=paper_id).paperauthor_set\
                                .values_list('author__author_name', flat=True)
         authors = list(dict.fromkeys(authors))
         payload = urllib.parse.urlencode({
@@ -221,7 +221,7 @@ class PaperGet(generics.RetrieveAPIView):
     
     def get_object(self):
         try:
-            obj = Paper.objects.prefetch_related('paperauthoraffiliation_set')\
+            obj = Paper.objects.prefetch_related('paperauthor_set')\
                             .get(pk=self.request.GET.get('paper_id', None))
         except Paper.DoesNotExist:
             return None
@@ -235,10 +235,10 @@ class PaperGet(generics.RetrieveAPIView):
             paper = serializer.data
             paper['conference'] = capitalizer(paper['conference'])
             paper['authors'] = list(map(capitalizer, paper['authors']))
-            paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
-            paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
-            if "" in paper['affiliations']:
-                paper['affiliations'].remove("")
+            # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+            # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+            # if "" in paper['affiliations']:
+                # paper['affiliations'].remove("")
             return Response(paper, status=status.HTTP_200_OK)
         except Exception as e:
             print(e)
@@ -253,7 +253,7 @@ class PaperList(generics.ListAPIView):
     explanation_url = f'{GM_URL}/explain'
 
     def _get_paper_by_ids(self, paper_ids):
-        return Paper.objects.prefetch_related('paperauthoraffiliation_set').filter(
+        return Paper.objects.prefetch_related('paperauthor_set').filter(
                 paper_id__in=paper_ids)
     
     def get_queryset(self):
@@ -277,10 +277,10 @@ class PaperList(generics.ListAPIView):
             for paper in response_data:
                 paper['conference'] = capitalizer(paper['conference'])
                 paper['authors'] = list(map(capitalizer, paper['authors']))
-                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
-                paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
-                if "" in paper['affiliations']:
-                    paper['affiliations'].remove("")
+                # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+                # if "" in paper['affiliations']:
+                #     paper['affiliations'].remove("")
                 paper_titles.append(paper['paper_title'])
                 abstracts.append(paper['abstract'])
 
@@ -351,7 +351,7 @@ class CitePaperPost(APIView):
             for paper in response_data:
                 paper['conference'] = capitalizer(paper['conference'])
                 paper['authors'] = list(map(capitalizer, paper['authors']))
-                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
             
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
@@ -388,20 +388,20 @@ class AuthorPost(generics.CreateAPIView):
                 return Response(json, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class AffiliationPost(generics.CreateAPIView):
-    """
-    Post Rest API for adding new affiliation
-    """
+# class AffiliationPost(generics.CreateAPIView):
+#     """
+#     Post Rest API for adding new affiliation
+#     """
 
-    def post(self, request, *args, **kwargs):
-        serializer = AffiliationSerializer(data=request.data, 
-                                           many=isinstance(request.data, list))
-        if serializer.is_valid():
-            affiliation = serializer.save()
-            if affiliation:
-                json = serializer.data
-                return Response(json, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#     def post(self, request, *args, **kwargs):
+#         serializer = AffiliationSerializer(data=request.data, 
+#                                            many=isinstance(request.data, list))
+#         if serializer.is_valid():
+#             affiliation = serializer.save()
+#             if affiliation:
+#                 json = serializer.data
+#                 return Response(json, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PaperPatch(generics.UpdateAPIView):
     """
@@ -411,13 +411,13 @@ class PaperPatch(generics.UpdateAPIView):
     def patch(self, request, *args, **kwargs):
         return super().patch(request, *args, **kwargs)
 
-class PaperAuthorAffilationPost(generics.CreateAPIView):
+class PaperAuthorPost(generics.CreateAPIView):
     """
-    Post Rest API for adding paper-author-affiliation relations
+    Post Rest API for adding paper-author relations
     """
 
     def post(self, request, *args, **kwargs):
-        serializer = PaperAuthorAffiliationSerializer(data=request.data, 
+        serializer = PaperAuthorSerializer(data=request.data, 
                                            many=isinstance(request.data, list))
         if serializer.is_valid():
             affiliation = serializer.save()
@@ -425,6 +425,21 @@ class PaperAuthorAffilationPost(generics.CreateAPIView):
                 json = serializer.data
                 return Response(json, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# class PaperAuthorAffilationPost(generics.CreateAPIView):
+#     """
+#     Post Rest API for adding paper-author-affiliation relations
+#     """
+
+#     def post(self, request, *args, **kwargs):
+#         serializer = PaperAuthorAffiliationSerializer(data=request.data, 
+#                                            many=isinstance(request.data, list))
+#         if serializer.is_valid():
+#             affiliation = serializer.save()
+#             if affiliation:
+#                 json = serializer.data
+#                 return Response(json, status=status.HTTP_201_CREATED)
+#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SearchGet(APIView):
     """
