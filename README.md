@@ -30,7 +30,7 @@ Then put your username, email, and password respectively. You can access the adm
 
 After  you clone the project, please copy file from:
 
-```./synonyms/synonyms.txt``` into ```./elasticsearch-{version}/bin/elasticsearch/analysis```
+```./synonyms/synonyms.txt``` (project directory) into ```./elasticsearch-{version}/bin/elasticsearch/analysis``` (elasticsearch directory)
 
 Run the following command:
 ```
