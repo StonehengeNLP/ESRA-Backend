@@ -3,12 +3,48 @@ from django_elasticsearch_dsl import Document, fields
 from django_elasticsearch_dsl.registries import registry
 from elasticsearch_dsl.connections import connections
 from .models import Paper
+from elasticsearch_dsl import analyzer, token_filter, tokenizer
+import os
+from django.conf import settings
 
 
 connections.create_connection(hosts=['localhost'])
 
+
+synonym_tokenfilter = token_filter(
+    'synonym_tokenfilter',
+    'synonym',
+    synonyms_path="analysis/synonyms.txt",
+)
+
+custom_analyzer = analyzer(
+    "custom_analyzer",
+    type="custom",
+    tokenizer="standard",
+    filter=[
+        'lowercase',
+        synonym_tokenfilter,
+    ]
+)
+
+try:
+    custom_analyzer.simulate('blah blah')
+except Exception as e:
+    ex = e
+    print(ex)
+
+
+
 @registry.register_document
 class PaperDocument(Document):
+
+    paper_title = fields.TextField(
+        analyzer=custom_analyzer
+    )
+    abstract = fields.TextField(
+        analyzer=custom_analyzer
+    )
+
 
     class Index:
         name = 'papers' # name of elastic index
@@ -18,7 +54,8 @@ class PaperDocument(Document):
 
     class Django:
         model = Paper
-        fields = ['paper_id','paper_title','citation_count','publish_date','abstract']
+        # fields = ['paper_id','citation_count','publish_date','paper_title','abstract']
+        fields = ['paper_id','citation_count','publish_date']
 
 
 
