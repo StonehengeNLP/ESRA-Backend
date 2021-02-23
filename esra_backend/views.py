@@ -235,12 +235,12 @@ class PaperGet(generics.RetrieveAPIView):
         try:
             serializer = PaperSerializer(instance=obj)
             paper = serializer.data
-            paper['conference'] = capitalizer(paper['conference'])
-            paper['authors'] = list(map(capitalizer, paper['authors']))
-            paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
-            paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
-            if "" in paper['affiliations']:
-                paper['affiliations'].remove("")
+            # paper['conference'] = capitalizer(paper['conference'])
+            # paper['authors'] = list(map(capitalizer, paper['authors']))
+            # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+            # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+            # if "" in paper['affiliations']:
+            #     paper['affiliations'].remove("")
             return Response(paper, status=status.HTTP_200_OK)
         except Exception as e:
             print(e)
@@ -277,12 +277,12 @@ class PaperList(generics.ListAPIView):
             paper_titles = []
             abstracts = []
             for paper in response_data:
-                paper['conference'] = capitalizer(paper['conference'])
-                paper['authors'] = list(map(capitalizer, paper['authors']))
-                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
-                paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
-                if "" in paper['affiliations']:
-                    paper['affiliations'].remove("")
+                # paper['conference'] = capitalizer(paper['conference'])
+                # paper['authors'] = list(map(capitalizer, paper['authors']))
+                # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+                # if "" in paper['affiliations']:
+                #     paper['affiliations'].remove("")
                 paper_titles.append(paper['paper_title'])
                 abstracts.append(paper['abstract'])
 
@@ -942,8 +942,8 @@ class ElasticSearchGet(APIView):
     
 
         if sort_by==0:
-            W_ELASTIC_SCORE = 0
-            W_POPULARITY = 1
+            W_ELASTIC_SCORE = 0.4
+            W_POPULARITY = 0.6
 
             for key in papers.keys():
                 papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)
