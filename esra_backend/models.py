@@ -14,7 +14,7 @@ class Paper(models.Model):
     journal_name = models.CharField(max_length=512, null=True)
 
     class Meta:
-        indexes = models.Index(fields=['arxiv_id'], name='arxiv_idx')
+        indexes = [models.Index(fields=['arxiv_id'], name='arxiv_idx')]
 
     @property
     def popularity(self):
