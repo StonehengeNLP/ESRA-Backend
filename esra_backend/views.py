@@ -18,7 +18,7 @@ from django.conf import settings
 import pickle
 from sentence_transformers import SentenceTransformer
 import scipy
-from .data import embedding_vector
+# from .data import embedding_vector
 
 GM_URL = os.environ.get('GM_URL')
 
@@ -27,6 +27,8 @@ from .helps import ElasticSearchPaperAndService, ElasticSearchPaperFilterAndServ
 from .utils import rebuild_elasticsearch_index, delete_elasticsearch_index, is_empty_or_null
 import elasticsearch
 import datetime
+
+
 
 
 class AutoComplete(APIView):
@@ -485,32 +487,32 @@ class SearchGet(APIView):
             papers += temp_papers
         return list(set(papers)),mapping_keyword_id
 
-    def _get_em_scores(self, papers, keywords):
-        # initial for embbeding vector
-        W_TITLE = 1
-        W_ABSTRACT = 1
+    # def _get_em_scores(self, papers, keywords):
+    #     # initial for embbeding vector
+    #     W_TITLE = 1
+    #     W_ABSTRACT = 1
 
-        model = SentenceTransformer('roberta-large-nli-mean-tokens',device='cpu')
+    #     model = SentenceTransformer('roberta-large-nli-mean-tokens',device='cpu')
 
-        title_em = []
-        abstract_em = []
-        for paper in papers:
-            title_em.append(embedding_vector[paper.paper_title]['title_em'])
-            abstract_em.append(embedding_vector[paper.paper_title]['abstract_em'])
+    #     title_em = []
+    #     abstract_em = []
+    #     for paper in papers:
+    #         title_em.append(embedding_vector[paper.paper_title]['title_em'])
+    #         abstract_em.append(embedding_vector[paper.paper_title]['abstract_em'])
 
-        keywords = tuple(keywords)
-        keywords_em = model.encode(keywords)
+    #     keywords = tuple(keywords)
+    #     keywords_em = model.encode(keywords)
 
-        scores = {}
-        for keyword,keyword_em in zip(keywords,keywords_em):
-            keyword_title_distance = scipy.spatial.distance.cdist([keyword_em], title_em, 'cosine')[0]
-            keyword_abstract_distance = scipy.spatial.distance.cdist([keyword_em], abstract_em, 'cosine')[0]
+    #     scores = {}
+    #     for keyword,keyword_em in zip(keywords,keywords_em):
+    #         keyword_title_distance = scipy.spatial.distance.cdist([keyword_em], title_em, 'cosine')[0]
+    #         keyword_abstract_distance = scipy.spatial.distance.cdist([keyword_em], abstract_em, 'cosine')[0]
 
-            for i,paper in enumerate(papers):
-                if paper.paper_id not in scores:
-                    scores[paper.paper_id] = (W_TITLE * keyword_title_distance[i]) + (W_ABSTRACT * keyword_abstract_distance[i])
+    #         for i,paper in enumerate(papers):
+    #             if paper.paper_id not in scores:
+    #                 scores[paper.paper_id] = (W_TITLE * keyword_title_distance[i]) + (W_ABSTRACT * keyword_abstract_distance[i])
 
-        return scores
+    #     return scores
 
     def _normalize_score(self,score,old_min,old_max,new_min,new_max):
         normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
@@ -574,18 +576,18 @@ class SearchGet(APIView):
             for i,paper in enumerate(papers):
                 temp_scores[i][2] = paper.publish_date
 
-        elif(sort_by == 3): # embedding vector
-            W_EM = 1
-            W_POP = 1
-            scores = self._get_em_scores(papers,q) # q is query/ keywords for extracted keyword
+        # elif(sort_by == 3): # embedding vector
+        #     W_EM = 1
+        #     W_POP = 1
+        #     scores = self._get_em_scores(papers,q) # q is query/ keywords for extracted keyword
 
-            l_scores = list(scores.values())
-            l_popularity = [paper.popularity for paper in papers]
+        #     l_scores = list(scores.values())
+        #     l_popularity = [paper.popularity for paper in papers]
             
-            for i,paper in enumerate(papers):
-                normalized_score = self._normalize_score(scores[paper.paper_id],min(l_scores),max(l_scores),0,1)
-                normalized_pop_score = self._normalize_score(paper.popularity,min(l_popularity),max(l_popularity),0,1)
-                temp_scores[i][1] = (W_EM * normalized_score) + (W_POP * normalized_pop_score) #ignore n_keywords
+        #     for i,paper in enumerate(papers):
+        #         normalized_score = self._normalize_score(scores[paper.paper_id],min(l_scores),max(l_scores),0,1)
+        #         normalized_pop_score = self._normalize_score(paper.popularity,min(l_popularity),max(l_popularity),0,1)
+        #         temp_scores[i][1] = (W_EM * normalized_score) + (W_POP * normalized_pop_score) #ignore n_keywords
 
         #final_score
         for score in temp_scores:
@@ -789,6 +791,8 @@ class FactGet(APIView):
 
 class ElasticSearchGet(APIView):
 
+    preprocess_url = f"{GM_URL}/preprocess"
+
     def __send_response(self, message, status_code, data=None):
         content = {
             "message": message,
@@ -799,6 +803,13 @@ class ElasticSearchGet(APIView):
     def _normalize_score(self,score,old_min,old_max,new_min,new_max):
         normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
         return normalized_score
+
+    def _get_synonym(self,q,ppc):
+        synonyms = []
+        for key,value in ppc.items():
+            if key in q and len(value) > 0:
+                synonyms.append(key+" ,"+value[0])
+        return synonyms
 
 
     def get(self, request):
@@ -819,6 +830,9 @@ class ElasticSearchGet(APIView):
         if is_empty_or_null(k):
             error_message = "k should be integer and not empty"
             return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
+
+        ppc = requests.post(self.preprocess_url,json={"text": query})
+        synonyms = self._get_synonym(query,ppc.json())
 
         try:
             # rebuild_elasticsearch_index()
@@ -928,8 +942,8 @@ class ElasticSearchGet(APIView):
     
 
         if sort_by==0:
-            W_ELASTIC_SCORE = 0.5
-            W_POPULARITY = 0.5
+            W_ELASTIC_SCORE = 0
+            W_POPULARITY = 1
 
             for key in papers.keys():
                 papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)

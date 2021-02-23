@@ -5,11 +5,13 @@
 ```mkdir elasticsearch-library```
 2. Download elasticsearch based-on your system to that directory [ https://www.elastic.co/downloads/elasticsearch ]
 3. Extract file
-```tar -xzf elasticsearch-5.1.1.tar.gz```
+```tar -xzf elasticsearch-{version}.tar.gz```
 4. Get in to directory
 ```cd elasticsearch-library```
 5. To start elasticsearch server run this command:
-```./elasticsearch-5.1.1/bin/elasticsearch```
+```./elasticsearch-{version}/bin/elasticsearch```
+
+To use the synonym, please follow the instruction below in Run the project with elascticsearch section.
 
 
 ## Enviroment
@@ -24,9 +26,13 @@ python manage.py createsuperuser
 
 Then put your username, email, and password respectively. You can access the admin at ```localhost:8000/admin``` after runthe project.
 
-## Run the project
-Run the following command:
+## Run the project with elascticsearch
 
+After  you clone the project, please copy file from:
+
+```./synonyms/synonyms.txt``` (project directory) into ```./elasticsearch-{version}/bin/elasticsearch/analysis``` (elasticsearch directory)
+
+Run the following command:
 ```
 python manage.py makemigrations
 python manage.py migrate
