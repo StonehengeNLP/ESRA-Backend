@@ -4,14 +4,17 @@ import datetime
 class Paper(models.Model):
     paper_id = models.AutoField(primary_key=True, null=False)
     paper_title = models.CharField(max_length=512, null=False)
-    conference = models.CharField(max_length=512, null=False)
-    arxiv_id = models.CharField(max_length=32, null=False)
-    mag_id = models.CharField(max_length=12, null=False)
+    conference = models.CharField(max_length=512, null=True, blank=True)
+    arxiv_id = models.CharField(max_length=32, null=False, unique=True)
+    # mag_id = models.CharField(max_length=12, null=False)
     citation_count = models.IntegerField(null=False)
     publish_date = models.DateField(null=False)
     abstract = models.TextField(null=True)
     cite_to = models.ManyToManyField('self', symmetrical=False, null=True, blank=True)
     journal_name = models.CharField(max_length=512, null=True)
+
+    class Meta:
+        indexes = models.Index(fields=['arxiv_id'], name='arxiv_idx')
 
     @property
     def popularity(self):
