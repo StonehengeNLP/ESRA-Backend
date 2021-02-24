@@ -273,6 +273,11 @@ class PaperList(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         papers = self.get_queryset()
+        paper_ids = self.request.GET.get('paper_ids', None)
+        if paper_ids:
+            paper_ids = [int(i) for i in paper_ids.split(',')]
+        papers_dict = {obj.paper_id:obj for obj in papers}
+        papers = [papers_dict[int(i)] for i in paper_ids]
         capitalizer = lambda x: string.capwords(x)
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
@@ -685,7 +690,7 @@ class FactGet(APIView):
                     try: 
                         # paper_title = Paper.objects.get(pk=paper_id).paper_title
                         paper_title = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title')
-                        print(paper_title)
+                        # print(paper_title)
                         paper_list.append({'id':paper_id, 'title':paper_title})
                     except Paper.DoesNotExist:
                         continue
@@ -718,7 +723,7 @@ class FactGet(APIView):
         # TODO: check q value
         payload = urllib.parse.urlencode({"q": q})
         response = requests.get(self.url,params=payload)
-        print(response.status_code)
+        # print(response.status_code)
         facts = response.json().get('facts', [])
 
         fact_list = self.restruct_facts(facts)
