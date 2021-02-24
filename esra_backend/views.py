@@ -826,9 +826,8 @@ class ElasticSearchGet(APIView):
         DEBUG = int(request.GET.get('debug',0)) # for debug
 
         one_keyword = False
-        if len(query.split()) == 1:
+        if len(query.strip().split()) == 1:
             one_keyword = True
-
 
         if is_empty_or_null(query):
             error_message = "queries should not be empty"
@@ -838,13 +837,16 @@ class ElasticSearchGet(APIView):
             error_message = "k should be integer and not empty"
             return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
 
+
         ppc = requests.post(self.preprocess_url,json={"text": query})
         synonyms = self._get_synonym(query,ppc.json())
+
 
 
         len_phrase = 0
         len_and = 0
         len_or = 0
+
 
         try:
             # rebuild_elasticsearch_index(
@@ -896,11 +898,12 @@ class ElasticSearchGet(APIView):
 
 
         paper_title = {}
+        paper_abstract = {}
+
         paper_id = []
         papers_phrase = {}
         papers_and = {}
         papers_or = {}
-
 
         if len_phrase > 0:
             max_score_phrase = 0
@@ -910,6 +913,7 @@ class ElasticSearchGet(APIView):
             for paper in result_phrase:
                 paper_id.append(paper['_id'])
                 paper_title[paper['_id']] = paper['_source']['paper_title']
+                paper_abstract[paper['_id']] = paper['_source']['abstract']
 
                 if sort_by == 0: #relevance
                     if paper['_id'] not in papers_phrase:
@@ -940,11 +944,11 @@ class ElasticSearchGet(APIView):
             min_score_and = 0
             max_pop_and = 0
             min_pop_and = 0
-            print('hi')
             for paper in result_and:
                 if paper['_id'] not in paper_id:
                     paper_id.append(paper['_id'])
                     paper_title[paper['_id']] = paper['_source']['paper_title']
+                    paper_abstract[paper['_id']] = paper['_source']['abstract']
 
                     if sort_by == 0: #relevance
                         if paper['_id'] not in papers_and:
@@ -979,6 +983,7 @@ class ElasticSearchGet(APIView):
                 if paper['_id'] not in paper_id:
                     paper_id.append(paper['_id'])
                     paper_title[paper['_id']] = paper['_source']['paper_title']
+                    paper_abstract[paper['_id']] = paper['_source']['abstract']
 
                     if sort_by == 0: #relevance
                         if paper['_id'] not in papers_or:
@@ -1005,8 +1010,9 @@ class ElasticSearchGet(APIView):
                         papers_or[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
     
 
-
+        
         if sort_by==0:
+            paper_score = {}
             W_ELASTIC_SCORE = 0.5
             W_POPULARITY = 0.5
 
@@ -1014,18 +1020,21 @@ class ElasticSearchGet(APIView):
                 for key in papers_phrase.keys():
                     papers_phrase[key][0] = self._normalize_score(papers_phrase[key][0],min_score_phrase,max_score_phrase,0,1)
                     papers_phrase[key][1] = self._normalize_score(papers_phrase[key][1],min_pop_phrase,max_pop_phrase,0,1)
+                    paper_score[key] = (papers_phrase[key][0], papers_phrase[key][1])
                     papers_phrase[key] = (W_ELASTIC_SCORE * papers_phrase[key][0]) + (W_POPULARITY * papers_phrase[key][1])
             
             if len_phrase < k:
                 for key in papers_and.keys():
                     papers_and[key][0] = self._normalize_score(papers_and[key][0],min_score_and,max_score_and,0,1)
                     papers_and[key][1] = self._normalize_score(papers_and[key][1],min_pop_and,max_pop_and,0,1)
+                    paper_score[key] = (papers_and[key][0], papers_and[key][1])
                     papers_and[key] = (W_ELASTIC_SCORE * papers_and[key][0]) + (W_POPULARITY * papers_and[key][1])
             
             if (len_phrase+len_and) < k:
                 for key in papers_or.keys():
                     papers_or[key][0] = self._normalize_score(papers_or[key][0],min_score_or,max_score_or,0,1)
                     papers_or[key][1] = self._normalize_score(papers_or[key][1],min_pop_or,max_pop_or,0,1)
+                    paper_score[key] = (papers_or[key][0], papers_or[key][1])
                     papers_or[key] = (W_ELASTIC_SCORE * papers_or[key][0]) + (W_POPULARITY * papers_or[key][1])
 
 
@@ -1050,7 +1059,7 @@ class ElasticSearchGet(APIView):
         
         if DEBUG==1:
             print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
-            final_result = [paper_title[paper_id] for paper_id in final_result]
+            final_result = [(paper_title[paper_id],paper_score[paper_id][0],paper_score[paper_id][1]) for paper_id in final_result]
 
         response = final_result
         # print(sorted_papers)
