@@ -683,8 +683,8 @@ class FactGet(APIView):
         for fact in fact_list:
             paper_set = set()
             paper_list = []
-            
-            for paper_id in fact['papers']:
+
+            for paper_id in fact.get('papers', []):
                 if paper_id not in paper_set:
                     paper_set.add(paper_id)
                     try: 
@@ -725,6 +725,8 @@ class FactGet(APIView):
         response = requests.get(self.url,params=payload)
         # print(response.status_code)
         facts = response.json().get('facts', [])
+        others = response.json().get('others', [])
+        facts += others
 
         fact_list = self.restruct_facts(facts)
         # for fact in fact_list:
@@ -740,6 +742,7 @@ class FactGet(APIView):
         link_id = 1 
         link_nums = dict()
         ent_id = 1
+        # link_set = set()
         get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1]
         get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
         # n_name = facts[0]['key']
