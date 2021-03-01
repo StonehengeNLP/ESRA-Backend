@@ -61,13 +61,14 @@ class PaperD3Get(APIView):
 
     def get(self, request, format=None):
         paper_id = self.request.GET.get('paper_id')
-        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        # paper_title = Paper.objects.get(pk=paper_id).paper_title
+        arxiv_id = Paper.objects.get(pk=paper_id).arxiv_id
         authors = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
                                .values_list('author__author_name', flat=True)
         authors = list(dict.fromkeys(authors))
         payload = urllib.parse.urlencode({
-            "paper_title": paper_title,
-            "limit": self.request.GET.get('limit', 0)
+            "arxiv_id": arxiv_id,
+            "limit": self.request.GET.get('limit', 30)
         })
         response = requests.get(self.graph_url,params=payload)
         relations = response.json().get('graph', [])
@@ -157,10 +158,11 @@ class Key_PaperD3Get(APIView):
     def get(self, request, format=None):
         keys = self.request.GET.get('keywords')
         paper_id = self.request.GET.get('paper_id')
-        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        # paper_title = Paper.objects.get(pk=paper_id).paper_title
+        arxiv_id = Paper.objects.get(pk=paper_id).arxiv_id
         payload = urllib.parse.urlencode({
             "keys": keys,
-            "paper_title": paper_title,
+            "arxiv_id": arxiv_id,
             "limit": self.request.GET.get('limit', 0)
         })
 
@@ -359,9 +361,9 @@ class CitePaperPost(APIView):
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
             for paper in response_data:
-                paper['conference'] = capitalizer(paper['conference'])
                 paper['authors'] = list(map(capitalizer, paper['authors']))
-                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                # paper['conference'] = capitalizer(paper['conference'])
+                # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
             
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
