@@ -62,7 +62,7 @@ class PaperListSerializer(ModelSerializer):
     class Meta:
         model = Paper
         fields = ('paper_id', 'paper_title', 'conference', 'abstract', 
-                  'authors', 'affiliations', )
+                  'authors', 'affiliations', 'citation_count', )
     
     def get_authors(self, obj):
         return obj.paperauthoraffiliation_set.all().values_list(
