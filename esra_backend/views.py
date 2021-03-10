@@ -661,6 +661,7 @@ class FactGet(APIView):
         ('part_of', False): "{}'s parts",
         ('compare', None): '{} is compared to...',
         ('related_to', None): '{} is related to...',
+        ('appear_in', True): '{} appear in...',
     }
 
     def rename_relation(self, relation_type, isSubject, n):
@@ -690,10 +691,8 @@ class FactGet(APIView):
                 if paper_id not in paper_set:
                     paper_set.add(paper_id)
                     try: 
-                        # paper_title = Paper.objects.get(pk=paper_id).paper_title
-                        paper_title = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title')
-                        # print(paper_title)
-                        paper_list.append({'id':paper_id, 'title':paper_title})
+                        paper_title,pid = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title', 'paper_id')[0]
+                        paper_list.append({'id':pid, 'title':paper_title, 'arxiv_id':paper_id})
                     except Paper.DoesNotExist:
                         continue
             
@@ -833,6 +832,7 @@ class ElasticSearchGet(APIView):
         sort_by = int(request.GET.get('sortBy',0))
         sort_order = int(request.GET.get('sortOrder',0))
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
+        fr_to_years = tuple([int(x) for x in filter_year_range.split('-')]) if filter_year_range!="DEFAULT" else (None,None) 
         DEBUG = int(request.GET.get('debug',0)) # for debug
 
         one_keyword = False
@@ -864,10 +864,7 @@ class ElasticSearchGet(APIView):
                 if filter_year_range == 'DEFAULT':
                     search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k)
                 else:
-                    from_year = int(filter_year_range[:4])
-                    to_year = int(filter_year_range[5:])
-                    filter_year_range = (from_year,to_year)
-                    search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k, filter_year_range)
+                    search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k, fr_to_years)
 
                 result_phrase = search_doc.run_query_list()
                 len_phrase = len(result_phrase) 
@@ -876,10 +873,7 @@ class ElasticSearchGet(APIView):
                 if filter_year_range == 'DEFAULT':
                     search_doc = ElasticSearchPaperAndService(PaperDocument, query, k-len_phrase)
                 else:
-                    from_year = int(filter_year_range[:4])
-                    to_year = int(filter_year_range[5:])
-                    filter_year_range = (from_year,to_year)
-                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k-len_phrase, filter_year_range)
+                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k-len_phrase, fr_to_years)
 
                 result_and = search_doc.run_query_list()
                 len_and = len(result_and)
@@ -888,10 +882,7 @@ class ElasticSearchGet(APIView):
                 if filter_year_range == 'DEFAULT':
                     search_doc = ElasticSearchPaperOrService(PaperDocument, query, k-(len_phrase+len_and))
                 else:
-                    from_year = int(filter_year_range[:4])
-                    to_year = int(filter_year_range[5:])
-                    filter_year_range = (from_year,to_year)
-                    search_doc = ElasticSearchPaperFilterOrService(PaperDocument, query, k-(len_phrase+len_and), filter_year_range)
+                    search_doc = ElasticSearchPaperFilterOrService(PaperDocument, query, k-(len_phrase+len_and), fr_to_years)
 
                 result_or = search_doc.run_query_list()
                 len_or = len(result_or)
