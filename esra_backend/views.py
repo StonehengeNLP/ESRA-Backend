@@ -813,8 +813,11 @@ class ElasticSearchGet(APIView):
         return Response(content, status=status_code)
 
     def _normalize_score(self,score,old_min,old_max,new_min,new_max):
-        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
-        return normalized_score
+        try:
+            normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
+            return normalized_score
+        except ZeroDivisionError:
+            return score
 
     def _get_synonym(self,q,ppc):
         synonyms = []
