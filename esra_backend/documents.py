@@ -47,7 +47,7 @@ class PaperDocument(Document):
     class Django:
         model = Paper
         # fields = ['paper_id','citation_count','publish_date','paper_title','abstract']
-        fields = ['paper_id','citation_count','publish_date']
+        fields = ['paper_id','arxiv_id','citation_count','publish_date']
 
 
 
