@@ -1059,7 +1059,8 @@ class ElasticSearchGet(APIView):
         
         if DEBUG==1:
             print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
-            final_result = [(paper_title[paper_id],paper_score[paper_id][0],paper_score[paper_id][1]) for paper_id in final_result]
+            final_result = [paper_title[paper_id] for paper_id in final_result]
+            # final_result = [(paper_title[paper_id],paper_score[paper_id][0],paper_score[paper_id][1]) for paper_id in final_result]
 
         response = final_result
         # print(sorted_papers)
