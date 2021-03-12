@@ -61,13 +61,14 @@ class PaperD3Get(APIView):
 
     def get(self, request, format=None):
         paper_id = self.request.GET.get('paper_id')
-        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        # paper_title = Paper.objects.get(pk=paper_id).paper_title
+        arxiv_id = Paper.objects.get(pk=paper_id).arxiv_id
         authors = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
                                .values_list('author__author_name', flat=True)
         authors = list(dict.fromkeys(authors))
         payload = urllib.parse.urlencode({
-            "paper_title": paper_title,
-            "limit": self.request.GET.get('limit', 0)
+            "arxiv_id": arxiv_id,
+            "limit": self.request.GET.get('limit', 30)
         })
         response = requests.get(self.graph_url,params=payload)
         relations = response.json().get('graph', [])
@@ -157,10 +158,11 @@ class Key_PaperD3Get(APIView):
     def get(self, request, format=None):
         keys = self.request.GET.get('keywords')
         paper_id = self.request.GET.get('paper_id')
-        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        # paper_title = Paper.objects.get(pk=paper_id).paper_title
+        arxiv_id = Paper.objects.get(pk=paper_id).arxiv_id
         payload = urllib.parse.urlencode({
             "keys": keys,
-            "paper_title": paper_title,
+            "arxiv_id": arxiv_id,
             "limit": self.request.GET.get('limit', 0)
         })
 
@@ -273,6 +275,11 @@ class PaperList(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         papers = self.get_queryset()
+        paper_ids = self.request.GET.get('paper_ids', None)
+        if paper_ids:
+            paper_ids = [int(i) for i in paper_ids.split(',')]
+        papers_dict = {obj.paper_id:obj for obj in papers}
+        papers = [papers_dict[int(i)] for i in paper_ids]
         capitalizer = lambda x: string.capwords(x)
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
@@ -354,9 +361,9 @@ class CitePaperPost(APIView):
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
             for paper in response_data:
-                paper['conference'] = capitalizer(paper['conference'])
                 paper['authors'] = list(map(capitalizer, paper['authors']))
-                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                # paper['conference'] = capitalizer(paper['conference'])
+                # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
             
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
@@ -654,6 +661,7 @@ class FactGet(APIView):
         ('part_of', False): "{}'s parts",
         ('compare', None): '{} is compared to...',
         ('related_to', None): '{} is related to...',
+        ('appear_in', True): '{} appear in...',
     }
 
     def rename_relation(self, relation_type, isSubject, n):
@@ -678,15 +686,13 @@ class FactGet(APIView):
         for fact in fact_list:
             paper_set = set()
             paper_list = []
-            
-            for paper_id in fact['papers']:
+
+            for paper_id in fact.get('papers', []):
                 if paper_id not in paper_set:
                     paper_set.add(paper_id)
                     try: 
-                        # paper_title = Paper.objects.get(pk=paper_id).paper_title
-                        paper_title = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title')
-                        print(paper_title)
-                        paper_list.append({'id':paper_id, 'title':paper_title})
+                        paper_title,pid = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title', 'paper_id')[0]
+                        paper_list.append({'id':pid, 'title':paper_title, 'arxiv_id':paper_id})
                     except Paper.DoesNotExist:
                         continue
             
@@ -718,8 +724,10 @@ class FactGet(APIView):
         # TODO: check q value
         payload = urllib.parse.urlencode({"q": q})
         response = requests.get(self.url,params=payload)
-        print(response.status_code)
+        # print(response.status_code)
         facts = response.json().get('facts', [])
+        others = response.json().get('others', [])
+        facts += others
 
         fact_list = self.restruct_facts(facts)
         # for fact in fact_list:
@@ -735,6 +743,7 @@ class FactGet(APIView):
         link_id = 1 
         link_nums = dict()
         ent_id = 1
+        # link_set = set()
         get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1]
         get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
         # n_name = facts[0]['key']
@@ -804,8 +813,11 @@ class ElasticSearchGet(APIView):
         return Response(content, status=status_code)
 
     def _normalize_score(self,score,old_min,old_max,new_min,new_max):
-        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
-        return normalized_score
+        try:
+            normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
+            return normalized_score
+        except ZeroDivisionError:
+            return score
 
     def _get_synonym(self,q,ppc):
         synonyms = []
@@ -823,6 +835,7 @@ class ElasticSearchGet(APIView):
         sort_by = int(request.GET.get('sortBy',0))
         sort_order = int(request.GET.get('sortOrder',0))
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
+        fr_to_years = tuple([int(x) for x in filter_year_range.split('-')]) if filter_year_range!="DEFAULT" else (None,None) 
         DEBUG = int(request.GET.get('debug',0)) # for debug
 
         one_keyword = False
@@ -854,10 +867,7 @@ class ElasticSearchGet(APIView):
                 if filter_year_range == 'DEFAULT':
                     search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k)
                 else:
-                    from_year = int(filter_year_range[:4])
-                    to_year = int(filter_year_range[5:])
-                    filter_year_range = (from_year,to_year)
-                    search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k, filter_year_range)
+                    search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k, fr_to_years)
 
                 result_phrase = search_doc.run_query_list()
                 len_phrase = len(result_phrase) 
@@ -866,10 +876,7 @@ class ElasticSearchGet(APIView):
                 if filter_year_range == 'DEFAULT':
                     search_doc = ElasticSearchPaperAndService(PaperDocument, query, k-len_phrase)
                 else:
-                    from_year = int(filter_year_range[:4])
-                    to_year = int(filter_year_range[5:])
-                    filter_year_range = (from_year,to_year)
-                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k-len_phrase, filter_year_range)
+                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k-len_phrase, fr_to_years)
 
                 result_and = search_doc.run_query_list()
                 len_and = len(result_and)
@@ -878,10 +885,7 @@ class ElasticSearchGet(APIView):
                 if filter_year_range == 'DEFAULT':
                     search_doc = ElasticSearchPaperOrService(PaperDocument, query, k-(len_phrase+len_and))
                 else:
-                    from_year = int(filter_year_range[:4])
-                    to_year = int(filter_year_range[5:])
-                    filter_year_range = (from_year,to_year)
-                    search_doc = ElasticSearchPaperFilterOrService(PaperDocument, query, k-(len_phrase+len_and), filter_year_range)
+                    search_doc = ElasticSearchPaperFilterOrService(PaperDocument, query, k-(len_phrase+len_and), fr_to_years)
 
                 result_or = search_doc.run_query_list()
                 len_or = len(result_or)
