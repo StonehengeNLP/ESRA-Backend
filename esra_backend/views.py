@@ -237,11 +237,12 @@ class PaperGet(generics.RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         obj = self.get_object()
         capitalizer = lambda x: string.capwords(x)
+        name_corrector = lambda x: ' '.join(x.split(' ')[::-1])
         try:
             serializer = PaperSerializer(instance=obj)
             paper = serializer.data
             # paper['conference'] = capitalizer(paper['conference'])
-            # paper['authors'] = list(map(capitalizer, paper['authors']))
+            paper['authors'] = list(map(name_corrector, paper['authors']))
             # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
             # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
             # if "" in paper['affiliations']:
@@ -281,6 +282,7 @@ class PaperList(generics.ListAPIView):
         papers_dict = {obj.paper_id:obj for obj in papers}
         papers = [papers_dict[int(i)] for i in paper_ids]
         capitalizer = lambda x: string.capwords(x)
+        name_corrector = lambda x: ' '.join(x.split(' ')[::-1])
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
@@ -288,7 +290,7 @@ class PaperList(generics.ListAPIView):
             abstracts = []
             for paper in response_data:
                 # paper['conference'] = capitalizer(paper['conference'])
-                # paper['authors'] = list(map(capitalizer, paper['authors']))
+                paper['authors'] = list(map(name_corrector, paper['authors']))
                 # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
                 # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
                 # if "" in paper['affiliations']:
@@ -357,11 +359,12 @@ class CitePaperPost(APIView):
         papers = self._get_queryset(paper_id, query_type, order_by_field, ordering)[skip:skip+10]
 
         capitalizer = lambda x: string.capwords(x)
+        name_corrector = lambda x: ' '.join(x.split(' ')[::-1])
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
             for paper in response_data:
-                paper['authors'] = list(map(capitalizer, paper['authors']))
+                paper['authors'] = list(map(name_corrector, paper['authors']))
                 # paper['conference'] = capitalizer(paper['conference'])
                 # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
             
