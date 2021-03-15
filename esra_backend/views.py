@@ -870,7 +870,7 @@ class ElasticSearchGet(APIView):
                 if filter_year_range == 'DEFAULT':
                     search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k)
                 else:
-                    search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k, fr_to_years)
+                    search_doc = ElasticSearchPaperFilterPhraseService(PaperDocument, query, k, fr_to_years)
 
                 result_phrase = search_doc.run_query_list()
                 len_phrase = len(result_phrase) 
