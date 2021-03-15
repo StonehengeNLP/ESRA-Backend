@@ -905,7 +905,7 @@ class ElasticSearchGet(APIView):
 
 
         paper_title = {}
-        paper_abstract = {}
+        # paper_arvix_id = {}
 
         paper_id = []
         papers_phrase = {}
@@ -920,7 +920,7 @@ class ElasticSearchGet(APIView):
             for paper in result_phrase:
                 paper_id.append(paper['_id'])
                 paper_title[paper['_id']] = paper['_source']['paper_title']
-                paper_abstract[paper['_id']] = paper['_source']['abstract']
+                # paper_arvix_id[paper['_id']] = paper['_source']['arxiv_id']
 
                 if sort_by == 0: #relevance
                     if paper['_id'] not in papers_phrase:
@@ -955,7 +955,7 @@ class ElasticSearchGet(APIView):
                 if paper['_id'] not in paper_id:
                     paper_id.append(paper['_id'])
                     paper_title[paper['_id']] = paper['_source']['paper_title']
-                    paper_abstract[paper['_id']] = paper['_source']['abstract']
+                    # paper_arvix_id[paper['_id']] = paper['_source']['arxiv_id']
 
                     if sort_by == 0: #relevance
                         if paper['_id'] not in papers_and:
@@ -990,7 +990,7 @@ class ElasticSearchGet(APIView):
                 if paper['_id'] not in paper_id:
                     paper_id.append(paper['_id'])
                     paper_title[paper['_id']] = paper['_source']['paper_title']
-                    paper_abstract[paper['_id']] = paper['_source']['abstract']
+                    # paper_arvix_id[paper['_id']] = paper['_source']['arxiv_id']
 
                     if sort_by == 0: #relevance
                         if paper['_id'] not in papers_or:
@@ -1064,10 +1064,13 @@ class ElasticSearchGet(APIView):
 
         final_result = sorted_papers[skip:skip+limit]
         
+        # if DEBUG==2:
+        #     # print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
+        #     final_result = [paper_arvix_id[paper_id] for paper_id in final_result]
+
         if DEBUG==1:
-            print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
+            # print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
             final_result = [paper_title[paper_id] for paper_id in final_result]
-            # final_result = [(paper_title[paper_id],paper_score[paper_id][0],paper_score[paper_id][1]) for paper_id in final_result]
 
         response = final_result
         # print(sorted_papers)
