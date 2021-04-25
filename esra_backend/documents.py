@@ -23,6 +23,7 @@ custom_analyzer = analyzer(
     tokenizer="standard",
     filter=[
         'lowercase',
+        'stop',
         synonym_tokenfilter,
     ]
 )

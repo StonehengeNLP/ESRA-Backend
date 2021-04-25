@@ -840,6 +840,7 @@ class ElasticSearchGet(APIView):
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
         fr_to_years = tuple([int(x) for x in filter_year_range.split('-')]) if filter_year_range!="DEFAULT" else (None,None) 
         DEBUG = int(request.GET.get('debug',0)) # for debug
+        show_score = int(request.GET.get('showScore',0))
 
         one_keyword = False
         if len(query.strip().split()) == 1:
@@ -1020,8 +1021,8 @@ class ElasticSearchGet(APIView):
         
         if sort_by==0:
             paper_score = {}
-            W_ELASTIC_SCORE = 0.5
-            W_POPULARITY = 0.5
+            W_ELASTIC_SCORE = 0.95
+            W_POPULARITY = 0.05
 
             if len_phrase > 0:
                 for key in papers_phrase.keys():
@@ -1046,20 +1047,37 @@ class ElasticSearchGet(APIView):
 
 
         sorted_papers = []
-        if sort_order==0:
-            if len_phrase > 0:
-                sorted_papers += [paper_id for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])[::-1]).keys()]
-            if len_phrase < k:
-                sorted_papers += [paper_id for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])[::-1]).keys()][:k-len_phrase]
-            if (len_phrase+len_and) < k:
-                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-(len_phrase+len_and)]
-        elif sort_order==1:
-            if len_phrase > 0:
-                sorted_papers = [paper_id for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])).keys()]
-            if len_phrase < k:
-                sorted_papers += [paper_id for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])).keys()][:k-len_phrase]
-            if (len_phrase+len_and) < k:
-                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-(len_phrase+len_and)]
+        if show_score == 0:
+            if sort_order==0:
+                if len_phrase > 0:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])[::-1]).keys()]
+                if len_phrase < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])[::-1]).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-(len_phrase+len_and)]
+            elif sort_order==1:
+                if len_phrase > 0:
+                    sorted_papers = [paper_id for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])).keys()]
+                if len_phrase < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-(len_phrase+len_and)]
+
+        if show_score == 1:
+            if sort_order==0:
+                if len_phrase > 0:
+                    sorted_papers += [[paper_id,papers_phrase[paper_id]] for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])[::-1]).keys()]
+                if len_phrase < k:
+                    sorted_papers += [[paper_id,papers_and[paper_id]] for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])[::-1]).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [[paper_id,papers_or[paper_id]] for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-(len_phrase+len_and)]
+            elif sort_order==1:
+                if len_phrase > 0:
+                    sorted_papers = [[paper_id,papers_phrase[paper_id]] for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])).keys()]
+                if len_phrase < k:
+                    sorted_papers += [[paper_id,papers_and[paper_id]] for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [[paper_id,papers_or[paper_id]] for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-(len_phrase+len_and)]
             
 
         final_result = sorted_papers[skip:skip+limit]
@@ -1070,7 +1088,10 @@ class ElasticSearchGet(APIView):
 
         if DEBUG==1:
             # print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
-            final_result = [paper_title[paper_id] for paper_id in final_result]
+            if show_score:
+                final_result = [[paper_title[item[0]],item[1]] for item in final_result]
+            else:
+                final_result = [paper_title[paper_id] for paper_id in final_result]
 
         response = final_result
         # print(sorted_papers)
