@@ -1021,8 +1021,8 @@ class ElasticSearchGet(APIView):
         
         if sort_by==0:
             paper_score = {}
-            W_ELASTIC_SCORE = 0.95
-            W_POPULARITY = 0.05
+            W_ELASTIC_SCORE = 0.6
+            W_POPULARITY = 0.4
 
             if len_phrase > 0:
                 for key in papers_phrase.keys():

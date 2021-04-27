@@ -19,7 +19,7 @@ class ElasticSearchPaperPhraseService:
         filter_words = ['using','with','in','on','by']
         self.query = " ".join([word for word in self.query.split() if word.lower() not in filter_words])
 
-        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "type": "phrase_prefix", "analyzer": custom_analyzer}})
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title^3", "abstract^1"], "type": "phrase_prefix", "analyzer": custom_analyzer}})
         # q = Q('bool',must=[Q('match', paper_title=self.query), Q('match', abstract=self.query),])
 
         search_with_query = self.search_instance.query(q).sort('_score')[0:self.size]
@@ -48,7 +48,7 @@ class ElasticSearchPaperFilterPhraseService:
         from_year = datetime.datetime.strptime(str(self.filter_year_range[0])+'-01-01','%Y-%m-%d').date()
         to_year = datetime.datetime.strptime(str(self.filter_year_range[1])+'-01-01','%Y-%m-%d').date()
 
-        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "type": "phrase_prefix", "analyzer": custom_analyzer}})
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title^3", "abstract^1"], "type": "phrase_prefix", "analyzer": custom_analyzer}})
         self.search_instance = self.search_instance.query(q)
         self.search_instance = self.search_instance.filter('range', **{'publish_date': { 'gte': from_year,'lt': to_year}})
         
@@ -77,7 +77,7 @@ class ElasticSearchPaperAndService:
         filter_words = ['using','with','in','on','by']
         self.query = " ".join([word for word in self.query.split() if word.lower() not in filter_words])
 
-        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "operator": "and", "type": "bool_prefix", "analyzer": custom_analyzer}})
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title^3", "abstract^1"], "operator": "and", "type": "bool_prefix", "analyzer": custom_analyzer}})
         # q = Q('bool',must=[Q('match', paper_title=self.query), Q('match', abstract=self.query),])
 
         search_with_query = self.search_instance.query(q).sort('_score')[0:self.size]
@@ -107,7 +107,7 @@ class ElasticSearchPaperFilterAndService:
         from_year = datetime.datetime.strptime(str(self.filter_year_range[0])+'-01-01','%Y-%m-%d').date()
         to_year = datetime.datetime.strptime(str(self.filter_year_range[1])+'-01-01','%Y-%m-%d').date()
 
-        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "operator": "and", "type": "bool_prefix", "analyzer": custom_analyzer}})
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title^3", "abstract^1"], "operator": "and", "type": "bool_prefix", "analyzer": custom_analyzer}})
         self.search_instance = self.search_instance.query(q)
         self.search_instance = self.search_instance.filter('range', **{'publish_date': { 'gte': from_year,'lt': to_year}})
         
@@ -134,7 +134,7 @@ class ElasticSearchPaperOrService:
         filter_words = ['using','with','in','on','by']
         self.query = " ".join([word for word in self.query.split() if word.lower() not in filter_words])
 
-        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "operator": "or", "type": "bool_prefix", "analyzer": custom_analyzer}})
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title^3", "abstract^1"], "operator": "or", "type": "bool_prefix", "analyzer": custom_analyzer}})
         # q = Q('bool',must=[Q('match', paper_title=self.query), Q('match', abstract=self.query),])
 
         # search_with_query = self.search_instance.query(q).sort('_score')
@@ -165,7 +165,7 @@ class ElasticSearchPaperFilterOrService:
         from_year = datetime.datetime.strptime(str(self.filter_year_range[0])+'-01-01','%Y-%m-%d').date()
         to_year = datetime.datetime.strptime(str(self.filter_year_range[1])+'-01-01','%Y-%m-%d').date()
 
-        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title", "abstract"], "operator": "or", "type": "bool_prefix", "analyzer": custom_analyzer}})
+        q = Q({"multi_match": { "query": self.query, "fields": ["paper_title^3", "abstract^1"], "operator": "or", "type": "bool_prefix", "analyzer": custom_analyzer}})
         self.search_instance = self.search_instance.query(q)
         self.search_instance = self.search_instance.filter('range', **{'publish_date': { 'gte': from_year,'lt': to_year}})
         
