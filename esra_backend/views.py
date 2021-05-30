@@ -23,12 +23,15 @@ import scipy
 GM_URL = os.environ.get('GM_URL')
 
 from .documents import PaperDocument
-from .helps import ElasticSearchPaperAndService, ElasticSearchPaperFilterAndService, ElasticSearchPaperOrService, ElasticSearchPaperFilterOrService
+from .helps import (ElasticSearchPaperAndService,
+                    ElasticSearchPaperFilterAndService, 
+                    ElasticSearchPaperOrService,
+                    ElasticSearchPaperFilterOrService,
+                    ElasticSearchPaperPhraseService,
+                    ElasticSearchPaperFilterPhraseService)
 from .utils import rebuild_elasticsearch_index, delete_elasticsearch_index, is_empty_or_null
 import elasticsearch
 import datetime
-
-
 
 
 class AutoComplete(APIView):
@@ -58,13 +61,14 @@ class PaperD3Get(APIView):
 
     def get(self, request, format=None):
         paper_id = self.request.GET.get('paper_id')
-        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        # paper_title = Paper.objects.get(pk=paper_id).paper_title
+        arxiv_id = Paper.objects.get(pk=paper_id).arxiv_id
         authors = Paper.objects.get(pk=paper_id).paperauthoraffiliation_set\
                                .values_list('author__author_name', flat=True)
         authors = list(dict.fromkeys(authors))
         payload = urllib.parse.urlencode({
-            "paper_title": paper_title,
-            "limit": self.request.GET.get('limit', 0)
+            "arxiv_id": arxiv_id,
+            "limit": self.request.GET.get('limit', 30)
         })
         response = requests.get(self.graph_url,params=payload)
         relations = response.json().get('graph', [])
@@ -154,10 +158,11 @@ class Key_PaperD3Get(APIView):
     def get(self, request, format=None):
         keys = self.request.GET.get('keywords')
         paper_id = self.request.GET.get('paper_id')
-        paper_title = Paper.objects.get(pk=paper_id).paper_title
+        # paper_title = Paper.objects.get(pk=paper_id).paper_title
+        arxiv_id = Paper.objects.get(pk=paper_id).arxiv_id
         payload = urllib.parse.urlencode({
             "keys": keys,
-            "paper_title": paper_title,
+            "arxiv_id": arxiv_id,
             "limit": self.request.GET.get('limit', 0)
         })
 
@@ -232,15 +237,16 @@ class PaperGet(generics.RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         obj = self.get_object()
         capitalizer = lambda x: string.capwords(x)
+        name_corrector = lambda x: ' '.join(x.split(' ')[::-1])
         try:
             serializer = PaperSerializer(instance=obj)
             paper = serializer.data
-            paper['conference'] = capitalizer(paper['conference'])
-            paper['authors'] = list(map(capitalizer, paper['authors']))
-            paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
-            paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
-            if "" in paper['affiliations']:
-                paper['affiliations'].remove("")
+            # paper['conference'] = capitalizer(paper['conference'])
+            paper['authors'] = list(map(name_corrector, paper['authors']))
+            # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+            # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+            # if "" in paper['affiliations']:
+            #     paper['affiliations'].remove("")
             return Response(paper, status=status.HTTP_200_OK)
         except Exception as e:
             print(e)
@@ -270,19 +276,25 @@ class PaperList(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         papers = self.get_queryset()
+        paper_ids = self.request.GET.get('paper_ids', None)
+        if paper_ids:
+            paper_ids = [int(i) for i in paper_ids.split(',')]
+        papers_dict = {obj.paper_id:obj for obj in papers}
+        papers = [papers_dict[int(i)] for i in paper_ids]
         capitalizer = lambda x: string.capwords(x)
+        name_corrector = lambda x: ' '.join(x.split(' ')[::-1])
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
             paper_titles = []
             abstracts = []
             for paper in response_data:
-                paper['conference'] = capitalizer(paper['conference'])
-                paper['authors'] = list(map(capitalizer, paper['authors']))
-                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
-                paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
-                if "" in paper['affiliations']:
-                    paper['affiliations'].remove("")
+                # paper['conference'] = capitalizer(paper['conference'])
+                paper['authors'] = list(map(name_corrector, paper['authors']))
+                # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                # paper['affiliations'] = list(dict.fromkeys(paper['affiliations']))
+                # if "" in paper['affiliations']:
+                #     paper['affiliations'].remove("")
                 paper_titles.append(paper['paper_title'])
                 abstracts.append(paper['abstract'])
 
@@ -347,13 +359,14 @@ class CitePaperPost(APIView):
         papers = self._get_queryset(paper_id, query_type, order_by_field, ordering)[skip:skip+10]
 
         capitalizer = lambda x: string.capwords(x)
+        name_corrector = lambda x: ' '.join(x.split(' ')[::-1])
         try:
             serializer = PaperListSerializer(instance=papers,many=True)
             response_data = serializer.data
             for paper in response_data:
-                paper['conference'] = capitalizer(paper['conference'])
-                paper['authors'] = list(map(capitalizer, paper['authors']))
-                paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
+                paper['authors'] = list(map(name_corrector, paper['authors']))
+                # paper['conference'] = capitalizer(paper['conference'])
+                # paper['affiliations'] = list(map(capitalizer, paper['affiliations']))
             
             return Response(response_data, status=status.HTTP_200_OK)
         except Exception as e:
@@ -651,6 +664,7 @@ class FactGet(APIView):
         ('part_of', False): "{}'s parts",
         ('compare', None): '{} is compared to...',
         ('related_to', None): '{} is related to...',
+        ('appear_in', True): '{} appear in...',
     }
 
     def rename_relation(self, relation_type, isSubject, n):
@@ -675,15 +689,13 @@ class FactGet(APIView):
         for fact in fact_list:
             paper_set = set()
             paper_list = []
-            
-            for paper_id in fact['papers']:
+
+            for paper_id in fact.get('papers', []):
                 if paper_id not in paper_set:
                     paper_set.add(paper_id)
                     try: 
-                        # paper_title = Paper.objects.get(pk=paper_id).paper_title
-                        paper_title = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title')
-                        print(paper_title)
-                        paper_list.append({'id':paper_id, 'title':paper_title})
+                        paper_title,pid = Paper.objects.filter(arxiv_id=paper_id).values_list('paper_title', 'paper_id')[0]
+                        paper_list.append({'id':pid, 'title':paper_title, 'arxiv_id':paper_id})
                     except Paper.DoesNotExist:
                         continue
             
@@ -715,8 +727,10 @@ class FactGet(APIView):
         # TODO: check q value
         payload = urllib.parse.urlencode({"q": q})
         response = requests.get(self.url,params=payload)
-        print(response.status_code)
+        # print(response.status_code)
         facts = response.json().get('facts', [])
+        others = response.json().get('others', [])
+        facts += others
 
         fact_list = self.restruct_facts(facts)
         # for fact in fact_list:
@@ -732,6 +746,7 @@ class FactGet(APIView):
         link_id = 1 
         link_nums = dict()
         ent_id = 1
+        # link_set = set()
         get_label = lambda x: x[0] if x[0]!='BaseEntity' else x[1]
         get_source_target = lambda n,m,x: (n,m) if x else (m,n)  
         # n_name = facts[0]['key']
@@ -801,8 +816,11 @@ class ElasticSearchGet(APIView):
         return Response(content, status=status_code)
 
     def _normalize_score(self,score,old_min,old_max,new_min,new_max):
-        normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
-        return normalized_score
+        try:
+            normalized_score = (new_max - new_min)*(score - old_min)/(old_max - old_min) + new_min
+            return normalized_score
+        except ZeroDivisionError:
+            return score
 
     def _get_synonym(self,q,ppc):
         synonyms = []
@@ -820,8 +838,13 @@ class ElasticSearchGet(APIView):
         sort_by = int(request.GET.get('sortBy',0))
         sort_order = int(request.GET.get('sortOrder',0))
         filter_year_range = str(request.GET.get('filterYear','DEFAULT')).strip()
+        fr_to_years = tuple([int(x) for x in filter_year_range.split('-')]) if filter_year_range!="DEFAULT" else (None,None) 
         DEBUG = int(request.GET.get('debug',0)) # for debug
+        show_score = int(request.GET.get('showScore',0))
 
+        one_keyword = False
+        if len(query.strip().split()) == 1:
+            one_keyword = True
 
         if is_empty_or_null(query):
             error_message = "queries should not be empty"
@@ -831,34 +854,47 @@ class ElasticSearchGet(APIView):
             error_message = "k should be integer and not empty"
             return self.__send_response(error_message, status.HTTP_400_BAD_REQUEST)
 
+
         ppc = requests.post(self.preprocess_url,json={"text": query})
         synonyms = self._get_synonym(query,ppc.json())
 
+
+
+        len_phrase = 0
+        len_and = 0
+        len_or = 0
+
+
         try:
-            # rebuild_elasticsearch_index()
-            if filter_year_range == 'DEFAULT':
-                search_doc = ElasticSearchPaperAndService(PaperDocument, query, k)
-            else:
-                from_year = int(filter_year_range[:4])
-                to_year = int(filter_year_range[5:])
-                filter_year_range = (from_year,to_year)
-                search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k, filter_year_range)
-
-            result = search_doc.run_query_list()
-
-            if len(result)< k:
+            # rebuild_elasticsearch_index(
+            if not one_keyword:
                 if filter_year_range == 'DEFAULT':
-                    search_doc = ElasticSearchPaperOrService(PaperDocument, query, k)
+                    search_doc = ElasticSearchPaperPhraseService(PaperDocument, query, k)
                 else:
-                    from_year = int(filter_year_range[:4])
-                    to_year = int(filter_year_range[5:])
-                    filter_year_range = (from_year,to_year)
-                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k, filter_year_range)
+                    search_doc = ElasticSearchPaperFilterPhraseService(PaperDocument, query, k, fr_to_years)
+
+                result_phrase = search_doc.run_query_list()
+                len_phrase = len(result_phrase) 
+
+            if len_phrase < k:
+                if filter_year_range == 'DEFAULT':
+                    search_doc = ElasticSearchPaperAndService(PaperDocument, query, k-len_phrase)
+                else:
+                    search_doc = ElasticSearchPaperFilterAndService(PaperDocument, query, k-len_phrase, fr_to_years)
+
+                result_and = search_doc.run_query_list()
+                len_and = len(result_and)
+
+            if (len_phrase+len_and) < k:
+                if filter_year_range == 'DEFAULT':
+                    search_doc = ElasticSearchPaperOrService(PaperDocument, query, k-(len_phrase+len_and))
+                else:
+                    search_doc = ElasticSearchPaperFilterOrService(PaperDocument, query, k-(len_phrase+len_and), fr_to_years)
 
                 result_or = search_doc.run_query_list()
-
-
+                len_or = len(result_or)
             # delete_elasticsearch_index()
+     
         
         except elasticsearch.ConnectionError as connection_error:
             error_message = "Elastic search Connection refused"
@@ -870,42 +906,83 @@ class ElasticSearchGet(APIView):
 
 
         paper_title = {}
+        # paper_arvix_id = {}
+
         paper_id = []
-        papers = {}
+        papers_phrase = {}
+        papers_and = {}
         papers_or = {}
-        max_score = 0
-        min_score = 0
-        max_pop = 0
-        min_pop =0
-        for paper in result:
-            paper_id.append(paper['_id'])
-            paper_title[paper['_id']] = paper['_source']['paper_title']
 
-            if sort_by == 0: #relevance
-                if paper['_id'] not in papers:
-                    papers[paper['_id']] = [0,0]
-                papers[paper['_id']][0] = paper['_score']
-                publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
-                diff_date = datetime.date.today() - publish_date
-                popularity = int(paper['_source']['citation_count']) / diff_date.days
-                papers[paper['_id']][1] = popularity
+        if len_phrase > 0:
+            max_score_phrase = 0
+            min_score_phrase = 0
+            max_pop_phrase = 0
+            min_pop_phrase = 0
+            for paper in result_phrase:
+                paper_id.append(paper['_id'])
+                paper_title[paper['_id']] = paper['_source']['paper_title']
+                # paper_arvix_id[paper['_id']] = paper['_source']['arxiv_id']
 
-                if float(paper['_score']) > max_score:
-                    max_score = float(paper['_score'])
-                if float(paper['_score']) < min_score:
-                    min_score = float(paper['_score'])
-                if popularity > max_pop:
-                    max_pop = popularity
-                if popularity < min_pop:
-                    min_pop = popularity
-            
-            elif sort_by==1: #citation_count
-                papers[paper['_id']] = paper['_source']['citation_count']
-            
-            elif sort_by==2: #publish_date
-                papers[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+                if sort_by == 0: #relevance
+                    if paper['_id'] not in papers_phrase:
+                        papers_phrase[paper['_id']] = [0,0]
+                    papers_phrase[paper['_id']][0] = paper['_score']
+                    publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+                    diff_date = datetime.date.today() - publish_date
+                    popularity = int(paper['_source']['citation_count']) / diff_date.days
+                    papers_phrase[paper['_id']][1] = popularity
+
+                    if float(paper['_score']) > max_score_phrase:
+                        max_score_phrase = float(paper['_score'])
+                    if float(paper['_score']) < min_score_phrase:
+                        min_score_phrase = float(paper['_score'])
+                    if popularity > max_pop_phrase:
+                        max_pop_phrase = popularity
+                    if popularity < min_pop_phrase:
+                        min_pop_phrase = popularity
+                
+                elif sort_by==1: #citation_count
+                    papers_phrase[paper['_id']] = paper['_source']['citation_count']
+                
+                elif sort_by==2: #publish_date
+                    papers_phrase[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
         
-        if len(result) < k:
+        if len_phrase < k:
+            max_score_and = 0
+            min_score_and = 0
+            max_pop_and = 0
+            min_pop_and = 0
+            for paper in result_and:
+                if paper['_id'] not in paper_id:
+                    paper_id.append(paper['_id'])
+                    paper_title[paper['_id']] = paper['_source']['paper_title']
+                    # paper_arvix_id[paper['_id']] = paper['_source']['arxiv_id']
+
+                    if sort_by == 0: #relevance
+                        if paper['_id'] not in papers_and:
+                            papers_and[paper['_id']] = [0,0]
+                        papers_and[paper['_id']][0] = paper['_score']
+                        publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+                        diff_date = datetime.date.today() - publish_date
+                        popularity = int(paper['_source']['citation_count']) / diff_date.days
+                        papers_and[paper['_id']][1] = popularity
+
+                        if float(paper['_score']) > max_score_and:
+                            max_score_and = float(paper['_score'])
+                        if float(paper['_score']) < min_score_and:
+                            min_score_and = float(paper['_score'])
+                        if popularity > max_pop_and:
+                            max_pop_and = popularity
+                        if popularity < min_pop_and:
+                            min_pop_and = popularity
+                    
+                    elif sort_by==1: #citation_count
+                        papers_and[paper['_id']] = paper['_source']['citation_count']
+                    
+                    elif sort_by==2: #publish_date
+                        papers_and[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
+
+        if (len_phrase+len_and) < k:
             max_score_or = 0
             min_score_or = 0
             max_pop_or = 0
@@ -914,9 +991,10 @@ class ElasticSearchGet(APIView):
                 if paper['_id'] not in paper_id:
                     paper_id.append(paper['_id'])
                     paper_title[paper['_id']] = paper['_source']['paper_title']
+                    # paper_arvix_id[paper['_id']] = paper['_source']['arxiv_id']
 
                     if sort_by == 0: #relevance
-                        if paper['_id'] not in papers:
+                        if paper['_id'] not in papers_or:
                             papers_or[paper['_id']] = [0,0]
                         papers_or[paper['_id']][0] = paper['_score']
                         publish_date = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
@@ -930,7 +1008,7 @@ class ElasticSearchGet(APIView):
                             min_score_or = float(paper['_score'])
                         if popularity > max_pop_or:
                             max_pop_or = popularity
-                        if popularity < min_pop:
+                        if popularity < min_pop_or:
                             min_pop_or = popularity
                     
                     elif sort_by==1: #citation_count
@@ -938,39 +1016,82 @@ class ElasticSearchGet(APIView):
                     
                     elif sort_by==2: #publish_date
                         papers_or[paper['_id']] = datetime.datetime.strptime(paper['_source']['publish_date'], '%Y-%m-%d').date()
-
     
 
+        
         if sort_by==0:
-            W_ELASTIC_SCORE = 0
-            W_POPULARITY = 1
+            paper_score = {}
+            W_ELASTIC_SCORE = 0.6
+            W_POPULARITY = 0.4
 
-            for key in papers.keys():
-                papers[key][0] = self._normalize_score(papers[key][0],min_score,max_score,0,1)
-                papers[key][1] = self._normalize_score(papers[key][1],min_pop,max_pop,0,1)
-                papers[key] = (W_ELASTIC_SCORE * papers[key][0]) + (W_POPULARITY * papers[key][1])
+            if len_phrase > 0:
+                for key in papers_phrase.keys():
+                    papers_phrase[key][0] = self._normalize_score(papers_phrase[key][0],min_score_phrase,max_score_phrase,0,1)
+                    papers_phrase[key][1] = self._normalize_score(papers_phrase[key][1],min_pop_phrase,max_pop_phrase,0,1)
+                    paper_score[key] = (papers_phrase[key][0], papers_phrase[key][1])
+                    papers_phrase[key] = (W_ELASTIC_SCORE * papers_phrase[key][0]) + (W_POPULARITY * papers_phrase[key][1])
             
-            # if len(result) < k:
-            for key in papers_or.keys():
-                papers_or[key][0] = self._normalize_score(papers_or[key][0],min_score_or,max_score,0,1)
-                papers_or[key][1] = self._normalize_score(papers_or[key][1],min_pop_or,max_pop,0,1)
-                papers_or[key] = (W_ELASTIC_SCORE * papers_or[key][0]) + (W_POPULARITY * papers_or[key][1])
+            if len_phrase < k:
+                for key in papers_and.keys():
+                    papers_and[key][0] = self._normalize_score(papers_and[key][0],min_score_and,max_score_and,0,1)
+                    papers_and[key][1] = self._normalize_score(papers_and[key][1],min_pop_and,max_pop_and,0,1)
+                    paper_score[key] = (papers_and[key][0], papers_and[key][1])
+                    papers_and[key] = (W_ELASTIC_SCORE * papers_and[key][0]) + (W_POPULARITY * papers_and[key][1])
+            
+            if (len_phrase+len_and) < k:
+                for key in papers_or.keys():
+                    papers_or[key][0] = self._normalize_score(papers_or[key][0],min_score_or,max_score_or,0,1)
+                    papers_or[key][1] = self._normalize_score(papers_or[key][1],min_pop_or,max_pop_or,0,1)
+                    paper_score[key] = (papers_or[key][0], papers_or[key][1])
+                    papers_or[key] = (W_ELASTIC_SCORE * papers_or[key][0]) + (W_POPULARITY * papers_or[key][1])
 
-        if sort_order==0:
-            sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])[::-1]).keys()]
-            if len(result) < k:
-                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-len(result)]
-            # sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()]
-        elif sort_order==1:
-            sorted_papers = [paper_id for paper_id in dict(sorted(papers.items(), key=lambda x: x[1])).keys()]
-            if len(result) < k:
-                sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-len(result)]
-            # sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()]
+
+        sorted_papers = []
+        if show_score == 0:
+            if sort_order==0:
+                if len_phrase > 0:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])[::-1]).keys()]
+                if len_phrase < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])[::-1]).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-(len_phrase+len_and)]
+            elif sort_order==1:
+                if len_phrase > 0:
+                    sorted_papers = [paper_id for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])).keys()]
+                if len_phrase < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [paper_id for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-(len_phrase+len_and)]
+
+        if show_score == 1:
+            if sort_order==0:
+                if len_phrase > 0:
+                    sorted_papers += [[paper_id,papers_phrase[paper_id]] for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])[::-1]).keys()]
+                if len_phrase < k:
+                    sorted_papers += [[paper_id,papers_and[paper_id]] for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])[::-1]).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [[paper_id,papers_or[paper_id]] for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])[::-1]).keys()][:k-(len_phrase+len_and)]
+            elif sort_order==1:
+                if len_phrase > 0:
+                    sorted_papers = [[paper_id,papers_phrase[paper_id]] for paper_id in dict(sorted(papers_phrase.items(), key=lambda x: x[1])).keys()]
+                if len_phrase < k:
+                    sorted_papers += [[paper_id,papers_and[paper_id]] for paper_id in dict(sorted(papers_and.items(), key=lambda x: x[1])).keys()][:k-len_phrase]
+                if (len_phrase+len_and) < k:
+                    sorted_papers += [[paper_id,papers_or[paper_id]] for paper_id in dict(sorted(papers_or.items(), key=lambda x: x[1])).keys()][:k-(len_phrase+len_and)]
+            
 
         final_result = sorted_papers[skip:skip+limit]
         
+        # if DEBUG==2:
+        #     # print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
+        #     final_result = [paper_arvix_id[paper_id] for paper_id in final_result]
+
         if DEBUG==1:
-            final_result = [paper_title[paper_id] for paper_id in final_result]
+            # print('phrase:',len_phrase,'/','and:',len_and,'/','or:',len_or)
+            if show_score:
+                final_result = [[paper_title[item[0]],item[1]] for item in final_result]
+            else:
+                final_result = [paper_title[paper_id] for paper_id in final_result]
 
         response = final_result
         # print(sorted_papers)

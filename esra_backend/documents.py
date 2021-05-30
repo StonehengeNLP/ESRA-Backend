@@ -19,21 +19,14 @@ synonym_tokenfilter = token_filter(
 
 custom_analyzer = analyzer(
     "custom_analyzer",
-    type="custom",
+    type="standard",
     tokenizer="standard",
     filter=[
         'lowercase',
+        'stop',
         synonym_tokenfilter,
     ]
 )
-
-try:
-    custom_analyzer.simulate('blah blah')
-except Exception as e:
-    ex = e
-    print(ex)
-
-
 
 @registry.register_document
 class PaperDocument(Document):
