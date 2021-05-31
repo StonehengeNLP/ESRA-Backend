@@ -16,8 +16,8 @@ from time import sleep
 import os
 from django.conf import settings
 import pickle
-from sentence_transformers import SentenceTransformer
-import scipy
+# from sentence_transformers import SentenceTransformer
+# import scipy
 # from .data import embedding_vector
 
 GM_URL = os.environ.get('GM_URL')

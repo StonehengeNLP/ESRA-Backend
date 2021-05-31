@@ -2,8 +2,9 @@ django
 djangorestframework
 django-environ
 django-cors-headers
-sentence_transformers
-scipy
+# scipy
+numpy
+requests
 django-debug-toolbar==2.2
 django-elasticsearch-debug-toolbar==2.0.0
 django-elasticsearch-dsl==7.1.1
