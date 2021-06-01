@@ -31,7 +31,8 @@ DEBUG = env.bool('DEBUG_MODE', False)
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    'backend'
+    'backend',
+    'esra.cp.eng.chula.ac.th'
 ]
 
 
