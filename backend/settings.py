@@ -26,11 +26,12 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = env.bool('DEBUG_MODE')
+DEBUG = env.bool('DEBUG_MODE', False)
 
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
+    'backend'
 ]
 
 
@@ -130,18 +131,18 @@ REST_FRAMEWORK = {
 # define elasticsearch server details
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': 'localhost:9200'
+        'hosts': env.str('ELASTICSEARCH_HOST')
     },
 }
 
 
-CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_ALLOW_ALL = env.bool('CORS_ALLOW', False)
 
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',# enable React app
     'http://localhost',# http
     'http://localhost:8000',# http
-    # 'http://frontend:3000',
+    'http://frontend:3000',
 ]
 
 # Internationalization

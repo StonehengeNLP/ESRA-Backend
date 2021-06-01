@@ -1,5 +1,5 @@
 # pull official base image
-FROM python:3
+FROM python:3.8-slim
 
 # set work directory
 WORKDIR /usr/src/backend
@@ -7,11 +7,14 @@ WORKDIR /usr/src/backend
 EXPOSE 8000
 
 # install dependencies
-RUN pip install --upgrade pip
 COPY ./requirements.txt .
-RUN pip install -r requirements.txt
+RUN set -ex \
+    && pip install --upgrade --no-cache-dir pip \
+    && pip install --no-cache-dir -r requirements.txt
 
 # copy project
 COPY . .
 
-CMD python manage.py runserver 0.0.0.0:8000
+EXPOSE 8000
+
+CMD ["sh", "start.sh"]
