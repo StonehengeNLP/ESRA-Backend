@@ -30,3 +30,6 @@ web/static/CACHE
 stats
 Dockerfile
 README.md
+
+new_seed.py
+seed.py 
