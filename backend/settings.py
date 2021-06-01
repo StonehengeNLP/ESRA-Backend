@@ -131,7 +131,7 @@ REST_FRAMEWORK = {
 # define elasticsearch server details
 ELASTICSEARCH_DSL = {
     'default': {
-        'hosts': env.str('ELASTICSEARCH_HOST')
+        'hosts': env.str('ELASTICSEARCH_HOST', 'localhost:9200'),
     },
 }
 
@@ -143,6 +143,7 @@ CORS_ORIGIN_WHITELIST = [
     'http://localhost',# http
     'http://localhost:8000',# http
     'http://frontend:3000',
+    'http://esra.cp.eng.chula.ac.th'
 ]
 
 # Internationalization

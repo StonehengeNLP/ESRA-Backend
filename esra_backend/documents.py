@@ -4,12 +4,13 @@ from django_elasticsearch_dsl.registries import registry
 from elasticsearch_dsl.connections import connections
 from .models import Paper
 from elasticsearch_dsl import analyzer, token_filter, tokenizer
-import os
+import environ, os
 from django.conf import settings
 
-
-connections.create_connection(hosts=['localhost'])
-
+# BASE_DIR = environ.Path(__file__) - 2
+# env = environ.Env()
+# environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+connections.create_connection(hosts=[os.getenv('ELASTICSEARCH_HOST', 'localhost:9200')])
 
 synonym_tokenfilter = token_filter(
     'synonym_tokenfilter',
