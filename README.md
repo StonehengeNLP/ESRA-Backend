@@ -56,10 +56,8 @@ Then put your username, email, and password respectively. You can access the adm
 ## Run the project with elascticsearch
 
 After  you clone the project, please copy file from:
-
-    First, ```./synonyms/synonyms.txt``` (project directory) into ```./elasticsearch-{version}/config/analysis``` (elasticsearch directory).
-    
-    Second, download database file (https://bit.ly/35eEFLt) and add to the project directory as in the repository struture.
+1. ```./synonyms/synonyms.txt``` (project directory) into ```./elasticsearch-{version}/config/analysis``` (elasticsearch directory).
+2. download database file (https://bit.ly/35eEFLt) and add to the project directory as in the repository struture.
 
 Run the following commands:
 ```
