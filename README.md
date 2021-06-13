@@ -32,7 +32,7 @@ After  you clone the project, please copy file from:
 
 ```./synonyms/synonyms.txt``` (project directory) into ```./elasticsearch-{version}/config/analysis``` (elasticsearch directory)
 
-Run the following command:
+Run the following commands:
 ```
 python manage.py makemigrations
 python manage.py migrate
@@ -44,3 +44,17 @@ python manage.py runserver
 ```
 python manage.py shell
 ```
+
+## Serve Django application
+
+We use gunicorn for serving our backend application. First install gunicorn(this is not fix, pick any that suite your liking) then run the following command:
+
+```
+gunicorn --bind 0.0.0.0:8000 --workers 8 backend.wsgi
+```
+
+This command will create 8 workers and binded at port 8000
+
+## Docker image
+
+The docker image of this project is publicly available at backgroundboy/esra-backend dockerhub repository. The image requires an environment variable **ELASTICSEARCH_HOST** for the name of external elasticsearch host in order to connenect and run.
