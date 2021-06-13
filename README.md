@@ -23,6 +23,7 @@ new_seed.py             :   dumping items to database
 requirements.txt        :   list of all libraries
 DockerFile              :   for running with gunicorn
 start.sh                :   for running with gunicorn
+esra.sqlite3            :   our database file (download: https://bit.ly/35eEFLt)
 ...
 ```
 
