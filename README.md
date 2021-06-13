@@ -10,9 +10,9 @@ esra_backend
     ├── documents.py    :   elasticsearch analyser and registry document
     ├── helps.py        :   elasticsearch query services
     ├── models.py       :   data model
-    ├── serializer.py   :   data serializer
+    ├── serializer.py   :   data serializers
     ├── urls.py         :   api url lists 
-    └── views.py        :   api logic
+    └── views.py        :   api logics
 synonyms
     ├── synonyms.py     :   create synonym.txt using embedding vector list of all entities
     └── synonyms.txt    :   file for put in elasticsearch for synonyms feature
