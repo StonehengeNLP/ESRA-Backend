@@ -5,7 +5,7 @@ This repository is for the backend of ESRA using Django connect with Elasticsear
 
 ```
 [backend]
-    ├── settings.py     :   setting port, host, database, and etc. from django
+    ├── settings.py     :   setting port, host, database, and etc from django
     └── ...
 [esra_backend]
     ├── documents.py    :   elasticsearch analyser and registry document
