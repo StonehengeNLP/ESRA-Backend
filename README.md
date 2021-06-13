@@ -23,7 +23,7 @@ DockerFile              :   for running with gunicorn
 start.sh                :   for running with gunicorn
 ```
 
-## Elastic Search
+## Elasticsearch
 1. Create directory
 ```mkdir elasticsearch-library```
 2. Download elasticsearch based-on your system to that directory [ https://www.elastic.co/downloads/elasticsearch ]
