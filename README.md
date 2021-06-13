@@ -15,7 +15,7 @@ To use the synonym, please follow the instruction below in Run the project with 
 
 
 ## Enviroment
-This project use Django framework(port:8000) connect with MySQL database(port:3306). In order to run the project, you need to create .env file (you can look the example at .env.example).
+In order to run the project, you need to create .env file (you can look the example at .env.example).
 
 ## Administrator
 In order to create super user of Django, run this command:
