@@ -4,16 +4,16 @@ This repository is for the backend of ESRA using Django connect with Elasticsear
 ## Repository Struture
 
 ```
-backend
+[backend]
     └── settings.py     :   setting port, host, database, and etc. from django
-esra_backend
+[esra_backend]
     ├── documents.py    :   elasticsearch analyser and registry document
     ├── helps.py        :   elasticsearch query services
     ├── models.py       :   data model
     ├── serializer.py   :   data serializers
     ├── urls.py         :   api url lists 
     └── views.py        :   api logics
-synonyms
+[synonyms]
     ├── synonyms.py     :   create synonym.txt using embedding vector list of all entities
     └── synonyms.txt    :   file for put in elasticsearch for synonyms feature
 .env                    :   enviroments same as in .env.example
