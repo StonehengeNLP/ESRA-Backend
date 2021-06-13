@@ -50,7 +50,7 @@ In order to create super user of Django, run this command:
 python manage.py createsuperuser
 ```
 
-Then put your username, email, and password respectively. You can access the admin at ```localhost:8000/admin``` after runthe project.
+Then put your username, email, and password respectively. You can access the admin at ```localhost:8000/admin``` after run the project.
 
 ## Run the project with elascticsearch
 
