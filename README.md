@@ -5,23 +5,22 @@ This repository is for the backend of ESRA using Django connect with Elasticsear
 
 ```
 backend
-    └── settings.py
+    └── settings.py     :   setting port, host, database, and etc. from django
 esra_backend
-    ├── documents.py
-    ├── helps.py
-    ├── models.py
-    ├── serializer.py
-    ├── urls.py
-    └── views.py
+    ├── documents.py    :   elasticsearch analyser and registry document
+    ├── helps.py        :   elasticsearch query services
+    ├── models.py       :   data model
+    ├── serializer.py   :   data serializer
+    ├── urls.py         :   api url lists 
+    └── views.py        :   api logic
 synonyms
-    ├── synonyms.py
-    └── synonyms.txt
-.env
-manage.py
-new_seed.py
-requirements.txt
-DockerFile
-start.sh
+    ├── synonyms.py     :   create synonym.txt using embedding vector list of all entities
+    └── synonyms.txt    :   file for put in elasticsearch for synonyms feature
+.env                    :   enviroments same as in .env.example
+new_seed.py             :   dumping items to database
+requirements.txt        :   list of all libraries
+DockerFile              :   for running with gunicorn
+start.sh                :   for running with gunicorn
 ```
 
 ## Elastic Search
