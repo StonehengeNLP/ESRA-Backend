@@ -47,13 +47,13 @@ python manage.py shell
 
 ## Serve Django application
 
-We use gunicorn for serving our backend application. First install gunicorn(this is not fix, pick any that suite your liking) then run the following command:
+We use gunicorn for serving our backend application. First install gunicorn(this is not fixed, pick anything that suit your liking) then run the following command:
 
 ```
 gunicorn --bind 0.0.0.0:8000 --workers 8 backend.wsgi
 ```
 
-This command will create 8 workers and binded at port 8000
+This command will create 8 workers and binded them at port 8000
 
 ## Docker image
 
