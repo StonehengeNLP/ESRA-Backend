@@ -1,4 +1,28 @@
 # ESRA-Backend
+This repository is for the backend of ESRA using Django connect with Elasticsearch.
+
+## Repository Struture
+
+```
+backend
+  └── settings.py
+esra_backend
+  ├── documents.py
+  ├── helps.py
+  ├── models.py
+  ├── serializer.py
+  ├── urls.py
+  └── views.py
+synonyms
+  ├── synonyms.py
+  └── synonyms.txt
+.env
+manage.py
+new_seed.py
+requirements.txt
+DockerFile
+start.sh
+```
 
 ## Elastic Search
 1. Create directory
