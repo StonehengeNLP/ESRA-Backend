@@ -796,11 +796,20 @@ class FactGet(APIView):
         node_list = []
         for (ent, eid) in node_dict.items():
             ent_name, ent_label = ent
-            node_list.append({
-                'id': eid,
-                'name': ent_name,
-                'labels': ent_label
-            })
+            if ent_label == 'Paper':
+                pid = Paper.objects.get(paper_title=ent_name).paper_id
+                node_list.append({
+                    'id': eid,
+                    'name': ent_name,
+                    'labels': ent_label,
+                    'pid': pid
+                })
+            else:
+                node_list.append({
+                    'id': eid,
+                    'name': ent_name,
+                    'labels': ent_label
+                })
         data = {'facts': fact_list, 'nodes':node_list, 'links':links}
         return Response(data,status=status.HTTP_200_OK)
 
