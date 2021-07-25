@@ -1,6 +1,33 @@
 # ESRA-Backend
+This repository is for the backend of ESRA using Django connect with Elasticsearch.
 
-## Elastic Search
+## Repository Struture
+
+```
+[backend]
+    ├── settings.py     :   setting port, host, database, and etc from django
+    └── ...
+[esra_backend]
+    ├── documents.py    :   elasticsearch analyser and registry document
+    ├── helps.py        :   elasticsearch query services
+    ├── models.py       :   data model
+    ├── serializer.py   :   data serializers
+    ├── urls.py         :   api url lists 
+    ├── views.py        :   api logics
+    └── ...
+[synonyms]
+    ├── synonyms.py     :   create synonym.txt using embedding vector list of all entities
+    └── synonyms.txt    :   file for put in elasticsearch for synonyms feature
+.env                    :   enviroments same as in .env.example
+new_seed.py             :   dumping items to database
+requirements.txt        :   list of all libraries
+DockerFile              :   for running with gunicorn
+start.sh                :   for running with gunicorn
+esra.sqlite3            :   our database file (download: https://bit.ly/35eEFLt)
+...
+```
+
+## Elasticsearch
 1. Create directory
 ```mkdir elasticsearch-library```
 2. Download elasticsearch based-on your system to that directory [ https://www.elastic.co/downloads/elasticsearch ]
@@ -15,7 +42,7 @@ To use the synonym, please follow the instruction below in Run the project with 
 
 
 ## Enviroment
-This project use Django framework(port:8000) connect with MySQL database(port:3306). In order to run the project, you need to create .env file (you can look the example at .env.example).
+In order to run the project, you need to create .env file (you can look the example at .env.example).
 
 ## Administrator
 In order to create super user of Django, run this command:
@@ -24,13 +51,13 @@ In order to create super user of Django, run this command:
 python manage.py createsuperuser
 ```
 
-Then put your username, email, and password respectively. You can access the admin at ```localhost:8000/admin``` after runthe project.
+Then put your username, email, and password respectively. You can access the admin at ```localhost:8000/admin``` after run the project.
 
 ## Run the project with elascticsearch
 
-After  you clone the project, please copy file from:
-
-```./synonyms/synonyms.txt``` (project directory) into ```./elasticsearch-{version}/config/analysis``` (elasticsearch directory)
+After  you clone the project, please follow the two steps before run the application:
+1. Copy ```./synonyms/synonyms.txt``` (project directory) into ```./elasticsearch-{version}/config/analysis``` (elasticsearch directory).
+2. Download a database file (https://bit.ly/35eEFLt) and add it to the project directory as shown in the repository struture.
 
 Run the following commands:
 ```
